@@ -17,7 +17,7 @@ Syntax
 
 Syntax is a bit similar to PHP.  
 Perl code has to be included between `<?` and `?>` tags.  
-There are two special modes:
+There are two special modes
 
 	<?=		echo mode, prints a Perl expression
 	<?:		command mode, executed by PerlPP itself
@@ -28,14 +28,12 @@ If there is any other character after `<?` then this tag will be ignored (passed
 Example
 -------
 
-input:
-
 	Hello <? print "world"; ?> (again).
 	<? for ( my $i = 0; $i < 5; $i++ ) { ?>
 		number: <?= $i ?>
 	<? } ?>
 
-output:
+Result
 
 	Hello world (again).
 
@@ -49,7 +47,7 @@ output:
 
 	number: 4
 
-In order to avoid empty lines, one might write it like this:
+In order to remove empty lines, one might write it like this
 
 	Hello <? print "world"; ?> (again).<?
 		for ( my $i = 0; $i < 5; $i++ ) { ?>number: <?= $i ?>
@@ -95,18 +93,31 @@ Moreover they can be nested!
 		}
 	?>
 	<? ABC(); ?>
-	<?= uc( "?>alphabet:
+	<?= uc( "?>alphabet
 		<? ABC(); ?>
 	<?" ); ?>
 
-printed characters from the second ABC() call is captured into the string `'alphabet: '`,  
-so the output will be:
+printed characters from the second `ABC()` call is captured into the string `'alphabet '`,  
+so the output will be
 
 	abcdefghijklmnopqrstuvwxyz
-	ALPHABET:
+	ALPHABET
 		ABCDEFGHIJKLMNOPQRSTUVWXYZ
 
 Capturing works in all modes: regular, echo or command mode.
+
+Highlighting
+------------
+
+To make PerlPP insets highlighted in Vim, add this to *~/.vimrc*
+
+	autocmd colorscheme * hi PerlPP ctermbg=darkgrey ctermfg=lightgreen
+
+and create corresponding *~/.vim/after/syntax/FILETYPE.vim*
+
+	syntax region PerlPP start='<?' end='?>' containedin=ALL
+
+FILETYPE can be determined with `:set ft?`
 
 Future
 ------
