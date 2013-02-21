@@ -8,10 +8,10 @@
 
 	Usage: perl perlpp.pl [options] [filename]
 	Options:
-		-o, --output filename		Output to the file instead of STDOUT.
-		-e, --eval expression		Evaluate the expression(s) before any Perl code.
-		-d, --debug					Don't evaluate Perl code, just write it to STDERR.
-		-h, --help					Usage help.
+		-o, --output filename       Output to the file instead of STDOUT.
+		-e, --eval expression       Evaluate the expression(s) before any Perl code.
+		-d, --debug                 Don't evaluate Perl code, just write it to STDERR.
+		-h, --help                  Usage help.
 
 	Some info about scoping in Perl:
 	http://darkness.codefu.org/wordpress/2003/03/perl-scoping/
@@ -30,7 +30,7 @@ use constant OPENING_RE		=> qr/^(.*?)\Q${\(TAG_OPEN)}\E(.*)$/;
 use constant CLOSING_RE		=> qr/^(.*?)\Q${\(TAG_CLOSE)}\E(.*)$/;
 
 use constant OBMODE_PLAIN	=> 0;
-use constant OBMODE_CATCH	=> 1;	# same as OBMODE_PLAIN but with catching to a string
+use constant OBMODE_CAPTURE	=> 1;	# same as OBMODE_PLAIN but with capturing
 use constant OBMODE_CODE	=> 2;
 use constant OBMODE_ECHO	=> 3;
 use constant OBMODE_COMMAND	=> 4;
@@ -126,7 +126,7 @@ sub OnOpening {
 	
 	$plainMode = GetModeOfOB();
 	$plain = EndOB();								# plain text
-	if ( $after =~ /^"/ && $plainMode == OBMODE_CATCH ) {
+	if ( $after =~ /^"/ && $plainMode == OBMODE_CAPTURE ) {
 		print "'" . EscapeString( $plain ) . "'";
 		# we are still buffering the inset contents,
 		# so we do not have to start it again
@@ -138,16 +138,16 @@ sub OnOpening {
 		} elsif ( $after =~ /^(?:\s|$)/ ) {
 			# OBMODE_CODE
 		} elsif ( $after =~ /^"/ ) {
-			die "Unexpected end of catching";
+			die "Unexpected end of capturing";
 		} else {
 			StartOB( $plainMode );					# skip non-PerlPP insets
 			print $plain . TAG_OPEN;
 			return ( 0, $after . "\n" );
 		}
 
-		if ( $plainMode == OBMODE_CATCH ) {
+		if ( $plainMode == OBMODE_CAPTURE ) {
 			print "'" . EscapeString( $plain ) . "' . do { PerlPP::StartOB(); ";
-			StartOB( $plainMode );					# wrap the inset in a catching mode
+			StartOB( $plainMode );					# wrap the inset in a capturing mode
 		} else {
 			print "print '" . EscapeString( $plain ) . "';\n";
 		}
@@ -167,7 +167,7 @@ sub OnClosing {
 	if ( $inside =~ /"$/ ) {
 		StartOB( $insetMode );						# restore contents of the inset
 		print substr( $inside, 0, -1 );
-		$plainMode = OBMODE_CATCH;
+		$plainMode = OBMODE_CAPTURE;
 	} else {
 		if ( $insetMode == OBMODE_ECHO ) {
 			print "print ${inside};\n";				# don't wrap in (), trailing semicolon
@@ -177,9 +177,9 @@ sub OnClosing {
 			print $inside;
 		}
 
-		if ( GetModeOfOB() == OBMODE_CATCH ) {		# if the inset is wrapped
+		if ( GetModeOfOB() == OBMODE_CAPTURE ) {		# if the inset is wrapped
 			print EndOB() . " PerlPP::EndOB(); } . ";	# end of do { .... } statement
-			$plainMode = OBMODE_CATCH;				# back to catching
+			$plainMode = OBMODE_CAPTURE;				# back to capturing
 		}
 	}
 	StartOB( $plainMode );							# plain text
@@ -224,8 +224,8 @@ sub ParseFile {
 	if ( $withinTag ) {
 		die "Unfinished Perl inset";
 	}
-	if ( GetModeOfOB() == OBMODE_CATCH ) {
-		die "Unfinished catching";
+	if ( GetModeOfOB() == OBMODE_CAPTURE ) {
+		die "Unfinished capturing";
 	}
 	if ( $CGuard ) {
 		print "\n#endif		// ${CGuard}\n";

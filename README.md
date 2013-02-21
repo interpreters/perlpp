@@ -19,8 +19,8 @@ Syntax is a bit similar to PHP.
 Perl code has to be included between `<?` and `?>` tags.  
 There are two special modes:
 
-	<?=		- echo mode, prints a Perl expression
-	<?:		- command mode, executed by PerlPP itself
+	<?=		echo mode, prints a Perl expression
+	<?:		command mode, executed by PerlPP itself
 
 A regular mode is started with `<?` followed by any number of whitespaces or line breaks.  
 If there is any other character after `<?` then this tag will be ignored (passed as it is).  
@@ -60,7 +60,7 @@ Commands
 
 	<?:include file.p ?>  
 
-or `<?:include "long file name.p" ?>` (place a whitespace before `?>`, explained further).  
+or `<?:include "long file name.p" ?>` (keep a whitespace between `"` and `?>`, explained further).  
 Include source code of another PerlPP file into this position.
 
 	<?:prefix foo bar ?>  
@@ -68,13 +68,13 @@ Include source code of another PerlPP file into this position.
 Replace word prefixes in the following output.  
 In this case words like `fooSomeWord` will become `barSomeWord`.
 
-Catching
---------
+Capturing
+---------
 
-Sometimes it would be great to get (to catch) a text into a Perl string.  
+Sometimes it would be great to get (to capture) a text into a Perl string.  
 
-	"?>		- start of catching
-	<?"		- end of catching
+	"?>		start of capturing
+	<?"		end of capturing
 
 For example
 
@@ -84,7 +84,7 @@ is the same as
 
 	<? print 'That\'s cool' . ', really.'; ?>
 
-Catched strings are properly escaped, and can be sequenced like in this example.  
+Captured strings are properly escaped, and can be sequenced like in this example.  
 Moreover they can be nested!
 
 	<?
@@ -94,16 +94,19 @@ Moreover they can be nested!
 			}
 		}
 	?>
+	<? ABC(); ?>
 	<?= uc( "?>alphabet:
 		<? ABC(); ?>
 	<?" ); ?>
 
-output of `<? ABC(); ?>` is catched into the string also, so the output is:
+printed characters from the second ABC() call is captured into the string `'alphabet: '`,  
+so the output will be:
 
+	abcdefghijklmnopqrstuvwxyz
 	ALPHABET:
 		ABCDEFGHIJKLMNOPQRSTUVWXYZ
 
-Catching works in all modes: regular, echo or command mode.
+Capturing works in all modes: regular, echo or command mode.
 
 Future
 ------
