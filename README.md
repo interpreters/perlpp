@@ -59,11 +59,11 @@ Commands
 	<?:include file.p ?>  
 
 or `<?:include "long file name.p" ?>` (keep a whitespace between `"` and `?>`, explained further).  
-Include source code of another PerlPP file into this position.
+Includes source code of another PerlPP file into this position.
 
 	<?:prefix foo bar ?>  
 
-Replace word prefixes in the following output.  
+Replaces word prefixes in the following output.  
 In this case words like `fooSomeWord` will become `barSomeWord`.
 
 Capturing
@@ -97,14 +97,19 @@ Moreover they can be nested!
 		<? ABC(); ?>
 	<?" ); ?>
 
-printed characters from the second `ABC()` call is captured into the string `'alphabet '`,  
-so the output will be
+Printed characters from the second `ABC()` call are attached to the string `'alphabet '`,  
+so the result will be
 
 	abcdefghijklmnopqrstuvwxyz
 	ALPHABET
 		ABCDEFGHIJKLMNOPQRSTUVWXYZ
 
 Capturing works in all modes: regular, echo or command mode.
+
+Future
+------
+
+Suggestions are welcome.
 
 Highlighting
 ------------
@@ -118,8 +123,3 @@ and create corresponding *~/.vim/after/syntax/FILETYPE.vim*
 	syntax region PerlPP start='<?' end='?>' containedin=ALL
 
 FILETYPE can be determined with `:set ft?`
-
-Future
-------
-
-Suggestions are welcome.
