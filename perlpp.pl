@@ -39,9 +39,7 @@ my $Package = "";
 my $RootSTDOUT;
 my @OutputBuffers = ();
 my $WorkingDir = ".";
-my $CGuard = "";
 my %Prefixes = ();
-my %CCleanups = ();
 
 sub PrintHelp {
 	print STDERR <<USAGE
@@ -235,9 +233,6 @@ sub ParseFile {
 	}
 	if ( GetModeOfOB() == OBMODE_CAPTURE ) {
 		die "Unfinished capturing";
-	}
-	if ( $CGuard ) {
-		print "\n#endif		// ${CGuard}\n";
 	}
 
 	# get the rest of the plain text
