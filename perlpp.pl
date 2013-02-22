@@ -38,6 +38,7 @@ use constant OBMODE_COMMAND	=> 4;
 my $Package = "";
 my $RootSTDOUT;
 my @OutputBuffers = ();
+my $WorkingDir = ".";
 my $CGuard = "";
 my %Prefixes = ();
 my %CCleanups = ();
@@ -108,9 +109,17 @@ sub EscapeString {
 
 sub ProcessCommand {
 	my $cmd = shift;
+	my $fn;
+	my $dir;
 
 	if ( $cmd =~ /^include\s+(?:['"](?<fn>[^'"]+)['"]|(?<fn>\S+))\s*$/i ) {
-		ParseFile( $+{fn} );
+		$fn = $+{fn};
+		$dir = $WorkingDir;
+		if ( $fn =~ /^(.*)[\\\/][^\\\/]+$/ ) {
+			$WorkingDir .= "/" . $1;
+		}
+		ParseFile( $dir . "/" . $fn );
+		$WorkingDir = $dir;
 	} elsif ( $cmd =~ /^prefix\s+(\S+)\s+(\S+)\s*$/i ) {
 		$Prefixes{ $1 } = $2;
 	} else {
