@@ -256,6 +256,7 @@ sub Main {
 			exit;
 		} elsif ( $a =~ /^(?:-e|--eval)$/ ) {
 			$argEval .= shift or die "No eval expression is specified";
+			$argEval .= "\n";
 		} elsif ( $a =~ /^(?:-o|--output)$/ ) {
 			$outputFilename = shift or die "No output file is specified";
 		} elsif ( $a =~ /^(?:-d|--debug)$/ ) {
@@ -271,7 +272,7 @@ sub Main {
 	$Package =~ s/[.\/\\]/_/g;
 
 	StartOB();				# Perl script
-	print "package PPP_${Package}; use strict; use warnings;\n${argEval}\n";
+	print "package PPP_${Package}; use strict; use warnings; my %DEF = ();\n${argEval}\n";
 	ParseFile( $inputFilename );
 	$script = EndOB();		# Perl script
 	if ( $argDebug ) {

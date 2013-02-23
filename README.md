@@ -83,7 +83,7 @@ is the same as
 	<? print 'That\'s cool' . ', really.'; ?>
 
 Captured strings are properly escaped, and can be sequenced like in this example.  
-Moreover they can be nested!
+Moreover, they can be nested!
 
 	<?
 		sub ABC {
