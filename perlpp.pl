@@ -142,6 +142,9 @@ sub OnOpening {
 			$insetMode = OBMODE_ECHO;
 		} elsif ( $after =~ /^:/ ) {
 			$insetMode = OBMODE_COMMAND;
+		} elsif ( $after =~ /^\// ) {
+			$plain .= "\n";
+			# OBMODE_CODE
 		} elsif ( $after =~ /^(?:\s|$)/ ) {
 			# OBMODE_CODE
 		} elsif ( $after =~ /^"/ ) {

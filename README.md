@@ -21,6 +21,7 @@ There are two special modes
 
 	<?=		echo mode, prints a Perl expression
 	<?:		command mode, executed by PerlPP itself
+	<?/		regular (code) mode, but line break will be appended to the previous text
 
 A regular mode is started with `<?` followed by any number of whitespaces or line breaks.  
 If there is any other character after `<?` then this tag will be ignored (passed as it is).  
