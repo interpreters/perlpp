@@ -111,13 +111,7 @@ sub ProcessCommand {
 	my $dir;
 
 	if ( $cmd =~ /^include\s+(?:['"](?<fn>[^'"]+)['"]|(?<fn>\S+))\s*$/i ) {
-		$fn = $+{fn};
-		$dir = $WorkingDir;
-		if ( $fn =~ /^(.*)[\\\/][^\\\/]+$/ ) {
-			$WorkingDir .= "/" . $1;
-		}
-		ParseFile( $dir . "/" . $fn );
-		$WorkingDir = $dir;
+		ParseFile( $WorkingDir . "/" . $+{fn} );
 	} elsif ( $cmd =~ /^prefix\s+(\S+)\s+(\S+)\s*$/i ) {
 		$Prefixes{ $1 } = $2;
 	} else {
@@ -197,13 +191,18 @@ sub OnClosing {
 
 sub ParseFile {
 	my $fname = shift;
+	my $wdir = "";
 	my $isSTDIN = 0;
 	my $f;
 	my $line;
 	my $withinTag = 0;
 	
 	if ( $fname ) {
-		open( $f, "<", $fname ) or die $!;
+		open( $f, "<", $fname ) or die "Cannot open '${fname}'";
+		if ( $fname =~ /^(.*)[\\\/][^\\\/]+$/ ) {
+			$wdir = $WorkingDir;
+			$WorkingDir = $1;
+		}
 	} else {
 		$f = *STDIN;
 		$isSTDIN = 1;
@@ -242,6 +241,9 @@ sub ParseFile {
 	print "print '" . EscapeString( EndOB() ) . "';\n";
 	if ( !$isSTDIN ) {
 		close( $f ) or die $!;
+		if ( $wdir ) {
+			$WorkingDir = $wdir;
+		}
 	}
 }
 
