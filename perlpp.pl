@@ -93,16 +93,30 @@ sub GetModeOfOB {
 	return $OutputBuffers[ 0 ]->[ 0 ];
 }
 
-sub EscapeString {
+sub DQuoteString {
+	my $s = shift;
+
+	$s =~ s/\\/\\\\/g;
+	$s =~ s/"/\\"/g;
+	return '"' . $s . '"';
+}
+
+sub QuoteString {
+	my $s = shift;
+
+	$s =~ s/\\/\\\\/g;
+	$s =~ s/'/\\'/g;
+	return "'" . $s . "'";
+}
+
+sub PrepareString {
 	my $s = shift;
 	my $pref;
 
 	foreach $pref ( keys %Prefixes ) {
 		$s =~ s/(^|\W)\Q$pref\E/$1$Prefixes{ $pref }/g;
 	}
-	$s =~ s/\\/\\\\/g;
-	$s =~ s/'/\\'/g;
-	return $s;
+	return QuoteString( $s );
 }
 
 sub ProcessCommand {
@@ -128,7 +142,7 @@ sub OnOpening {
 	$plainMode = GetModeOfOB();
 	$plain = EndOB();								# plain text
 	if ( $after =~ /^"/ && $plainMode == OBMODE_CAPTURE ) {
-		print "'" . EscapeString( $plain ) . "'";
+		print PrepareString( $plain );
 		# we are still buffering the inset contents,
 		# so we do not have to start it again
 	} else {
@@ -150,10 +164,10 @@ sub OnOpening {
 		}
 
 		if ( $plainMode == OBMODE_CAPTURE ) {
-			print "'" . EscapeString( $plain ) . "' . do { PerlPP::StartOB(); ";
+			print PrepareString( $plain ) . " . do { PerlPP::StartOB(); ";
 			StartOB( $plainMode );					# wrap the inset in a capturing mode
 		} else {
-			print "print '" . EscapeString( $plain ) . "';\n";
+			print "print " . PrepareString( $plain ) . ";\n";
 		}
 		StartOB( $insetMode );						# contents of the inset
 	}
@@ -238,7 +252,7 @@ sub ParseFile {
 	}
 
 	# get the rest of the plain text
-	print "print '" . EscapeString( EndOB() ) . "';\n";
+	print "print " . PrepareString( EndOB() ) . ";\n";
 	if ( !$isSTDIN ) {
 		close( $f ) or die $!;
 		if ( $wdir ) {
