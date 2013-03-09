@@ -24,10 +24,10 @@ use v5.10;
 use strict;
 use warnings;
 
-use constant TAG_OPEN		=> "<?";
-use constant TAG_CLOSE		=> "?>";
-use constant OPENING_RE		=> qr/^(.*?)\Q${\(TAG_OPEN)}\E(.*)$/;
-use constant CLOSING_RE		=> qr/^(.*?)\Q${\(TAG_CLOSE)}\E(.*)$/;
+use constant TAG_OPEN		=> '<' . '?';
+use constant TAG_CLOSE		=> '?' . '>';
+use constant OPENING_RE		=> qr/^(.*?)\Q${\(TAG_OPEN)}\E(.*)$/s;	# /s states for single-line mode
+use constant CLOSING_RE		=> qr/^(.*?)\Q${\(TAG_CLOSE)}\E(.*)$/s;
 
 use constant OBMODE_PLAIN	=> 0;
 use constant OBMODE_CAPTURE	=> 1;	# same as OBMODE_PLAIN but with capturing
@@ -35,11 +35,13 @@ use constant OBMODE_CODE	=> 2;
 use constant OBMODE_ECHO	=> 3;
 use constant OBMODE_COMMAND	=> 4;
 
-my $Package = "";
+my $Package = '';
 my $RootSTDOUT;
 my @OutputBuffers = ();
-my $WorkingDir = ".";
+my $WorkingDir = '.';
 my %Prefixes = ();
+my @Preps = ();
+my @Posts = ();
 
 sub PrintHelp {
 	print STDERR <<USAGE
@@ -51,6 +53,14 @@ Options:
 	-h, --help               Usage help.
 USAGE
 	;
+}
+
+sub AddPrep {
+	push( @Preps, shift );
+}
+
+sub AddPost {
+	push( @Posts, shift );
 }
 
 sub StartOB {
@@ -126,6 +136,10 @@ sub ProcessCommand {
 
 	if ( $cmd =~ /^include\s+(?:['"](?<fn>[^'"]+)['"]|(?<fn>\S+))\s*$/i ) {
 		ParseFile( $WorkingDir . "/" . $+{fn} );
+	} elsif ( $cmd =~ /^macro\s+(.*)$/si ) {
+		StartOB();									# plain text
+		eval( $1 ); warn $@ if $@;
+		print "print " . PrepareString( EndOB() ) . ";\n";
 	} elsif ( $cmd =~ /^prefix\s+(\S+)\s+(\S+)\s*$/i ) {
 		$Prefixes{ $1 } = $2;
 	} else {
@@ -171,8 +185,8 @@ sub OnOpening {
 		}
 		StartOB( $insetMode );						# contents of the inset
 	}
-	return ( 1, "\n" ) unless $after;
-	return ( 1, substr( $after, 1 ) . "\n" );
+	return ( 1, "" ) unless $after;
+	return ( 1, substr( $after, 1 ) );
 }
 
 sub OnClosing {
@@ -206,44 +220,51 @@ sub OnClosing {
 sub ParseFile {
 	my $fname = shift;
 	my $wdir = "";
-	my $isSTDIN = 0;
-	my $f;
-	my $line;
 	my $withinTag = 0;
+	my $contents;
 	
-	if ( $fname ) {
-		open( $f, "<", $fname ) or die "Cannot open '${fname}'";
-		if ( $fname =~ /^(.*)[\\\/][^\\\/]+$/ ) {
-			$wdir = $WorkingDir;
-			$WorkingDir = $1;
+	# read the whole file
+	$contents = do {
+		my $f;
+		local $/ = undef;
+
+		if ( $fname ) {
+			open( $f, "<", $fname ) or die "Cannot open '${fname}'";
+			if ( $fname =~ /^(.*)[\\\/][^\\\/]+$/ ) {
+				$wdir = $WorkingDir;
+				$WorkingDir = $1;
+			}
+		} else {
+			$f = *STDIN;
 		}
-	} else {
-		$f = *STDIN;
-		$isSTDIN = 1;
-	}
+
+		<$f>;
+		# the file will be close automatically here
+	};
+
 	StartOB();										# plain text
 
-	while ( $line = <$f> ) {
-		if ( $withinTag ) {
-			if ( $line =~ CLOSING_RE ) {
-				print $1;
-				$line = $2 . "\n";
-				OnClosing();
-				$withinTag = 0;
-				redo;
-			};
-		} else {
-			if ( $line =~ OPENING_RE ) {
-				print $1;
-				( $withinTag, $line ) = OnOpening( $2 );
-				if ( $withinTag ) {
-					redo;
-				}
+	# TODO change this to a simple string searching (to speedup)
+OPENING:
+	if ( $withinTag ) {
+		if ( $contents =~ CLOSING_RE ) {
+			print $1;
+			$contents = $2;
+			OnClosing();
+			$withinTag = 0;
+			goto OPENING;
+		};
+	} else {
+		if ( $contents =~ OPENING_RE ) {
+			print $1;
+			( $withinTag, $contents ) = OnOpening( $2 );
+			if ( $withinTag ) {
+				goto OPENING;
 			}
 		}
-		print $line;
 	}
 
+	print $contents;								# tail of a plain text
 	if ( $withinTag ) {
 		die "Unfinished Perl inset";
 	}
@@ -253,11 +274,8 @@ sub ParseFile {
 
 	# get the rest of the plain text
 	print "print " . PrepareString( EndOB() ) . ";\n";
-	if ( !$isSTDIN ) {
-		close( $f ) or die $!;
-		if ( $wdir ) {
-			$WorkingDir = $wdir;
-		}
+	if ( $wdir ) {
+		$WorkingDir = $wdir;
 	}
 }
 
