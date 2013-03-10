@@ -36,12 +36,12 @@ use constant OBMODE_ECHO	=> 3;
 use constant OBMODE_COMMAND	=> 4;
 
 my $Package = '';
+my @Preprocessors = ();
+my @Postprocessors = ();
 my $RootSTDOUT;
 my @OutputBuffers = ();
 my $WorkingDir = '.';
 my %Prefixes = ();
-my @Preps = ();
-my @Posts = ();
 
 sub PrintHelp {
 	print STDERR <<USAGE
@@ -55,12 +55,12 @@ USAGE
 	;
 }
 
-sub AddPrep {
-	push( @Preps, shift );
+sub AddPreprocessor {
+	unshift( @Preprocessors, shift );
 }
 
-sub AddPost {
-	push( @Posts, shift );
+sub AddPostprocessor {
+	unshift( @Postprocessors, shift );
 }
 
 sub StartOB {
@@ -135,7 +135,7 @@ sub ProcessCommand {
 	my $dir;
 
 	if ( $cmd =~ /^include\s+(?:['"](?<fn>[^'"]+)['"]|(?<fn>\S+))\s*$/i ) {
-		ParseFile( $WorkingDir . "/" . $+{fn} );
+		PreprocessFile( $WorkingDir . "/" . $+{fn} );
 	} elsif ( $cmd =~ /^macro\s+(.*)$/si ) {
 		StartOB();									# plain text
 		eval( $1 ); warn $@ if $@;
@@ -217,11 +217,49 @@ sub OnClosing {
 	StartOB( $plainMode );							# plain text
 }
 
-sub ParseFile {
+sub PerlPP {
+	my $contents = shift;							# reference
+	my $withinTag = 0;
+
+	StartOB();										# plain text
+
+	# TODO change this to a simple string searching (to speedup)
+	OPENING:
+	if ( $withinTag ) {
+		if ( $$contents =~ CLOSING_RE ) {
+			print $1;
+			$$contents = $2;
+			OnClosing();
+			$withinTag = 0;
+			goto OPENING;
+		};
+	} else {
+		if ( $$contents =~ OPENING_RE ) {
+			print $1;
+			( $withinTag, $$contents ) = OnOpening( $2 );
+			if ( $withinTag ) {
+				goto OPENING;
+			}
+		}
+	}
+	print $$contents;								# tail of a plain text
+
+	if ( $withinTag ) {
+		die "Unfinished Perl inset";
+	}
+	if ( GetModeOfOB() == OBMODE_CAPTURE ) {
+		die "Unfinished capturing";
+	}
+
+	# getting the rest of the plain text
+	print "print " . PrepareString( EndOB() ) . ";\n";
+}
+
+sub PreprocessFile {
 	my $fname = shift;
 	my $wdir = "";
-	my $withinTag = 0;
 	my $contents;
+	my $proc;
 	
 	# read the whole file
 	$contents = do {
@@ -238,49 +276,45 @@ sub ParseFile {
 			$f = *STDIN;
 		}
 
-		<$f>;
-		# the file will be close automatically here
+		<$f>;			# the file will be close automatically here
 	};
 
-	StartOB();										# plain text
-
-	# TODO change this to a simple string searching (to speedup)
-OPENING:
-	if ( $withinTag ) {
-		if ( $contents =~ CLOSING_RE ) {
-			print $1;
-			$contents = $2;
-			OnClosing();
-			$withinTag = 0;
-			goto OPENING;
-		};
-	} else {
-		if ( $contents =~ OPENING_RE ) {
-			print $1;
-			( $withinTag, $contents ) = OnOpening( $2 );
-			if ( $withinTag ) {
-				goto OPENING;
-			}
-		}
+	for $proc ( @Preprocessors ) {
+		StartOB();
+		&$proc( \$contents );
+		$contents = EndOB();
 	}
 
-	print $contents;								# tail of a plain text
-	if ( $withinTag ) {
-		die "Unfinished Perl inset";
-	}
-	if ( GetModeOfOB() == OBMODE_CAPTURE ) {
-		die "Unfinished capturing";
-	}
+	print $contents;
 
-	# get the rest of the plain text
-	print "print " . PrepareString( EndOB() ) . ";\n";
 	if ( $wdir ) {
 		$WorkingDir = $wdir;
 	}
 }
 
-sub Main {
+sub PostprocessAndOutput {
+	my $contents = shift;					# reference
+	my $fname = shift;
+	my $proc;
 	my $f;
+
+	if ( $fname ) {
+		open( $f, ">", $fname ) or die $!;
+	} else {
+		open( $f, ">&STDOUT" ) or die $!;
+	}
+
+	for $proc ( @Postprocessors ) {
+		StartOB();
+		&$proc( $contents );
+		$$contents = EndOB();
+	}
+
+	print $f $$contents;
+	close( $f ) or die $!;
+}
+
+sub Main {
 	my $argEval = "";
 	my $argDebug = 0;
 	my $inputFilename = "";
@@ -304,26 +338,22 @@ sub Main {
 		# TODO tranfer parameters to the processed file
 	}
 
+	AddPreprocessor( \&PerlPP );					# will be the last preprocessing function
+
 	$Package = $inputFilename;
 	$Package =~ s/^([a-zA-Z_][a-zA-Z_0-9.]*).p$/$1/;
 	$Package =~ s/[.\/\\]/_/g;
 
-	StartOB();				# Perl script
+	StartOB();
 	print "package PPP_${Package}; use strict; use warnings; my %DEF = ();\n${argEval}\n";
-	ParseFile( $inputFilename );
-	$script = EndOB();		# Perl script
+	PreprocessFile( $inputFilename );
+	$script = EndOB();								# Perl script
 	if ( $argDebug ) {
 		print STDERR $script;
 	} else {
-		if ( $outputFilename ) {
-			open( $f, ">", $outputFilename ) or die $!;
-		} else {
-			open( $f, ">&STDOUT" ) or die $!;
-		}
-		StartOB();			# output of the Perl script
+		StartOB();									# output of the Perl script
 		eval( $script ); warn $@ if $@;
-		print $f EndOB();	# output of the Perl script
-		close( $f ) or die $!;
+		PostprocessAndOutput( \EndOB(), $outputFilename );
 	}
 }
 
