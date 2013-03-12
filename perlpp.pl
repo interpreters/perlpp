@@ -56,11 +56,12 @@ USAGE
 }
 
 sub AddPreprocessor {
-	unshift( @Preprocessors, shift );
+	push( @Preprocessors, shift );
+	# TODO run it!
 }
 
 sub AddPostprocessor {
-	unshift( @Postprocessors, shift );
+	push( @Postprocessors, shift );
 }
 
 sub StartOB {
@@ -129,13 +130,13 @@ sub PrepareString {
 	return QuoteString( $s );
 }
 
-sub ProcessCommand {
+sub ExecuteCommand {
 	my $cmd = shift;
 	my $fn;
 	my $dir;
 
 	if ( $cmd =~ /^include\s+(?:['"](?<fn>[^'"]+)['"]|(?<fn>\S+))\s*$/i ) {
-		PreprocessFile( $WorkingDir . "/" . $+{fn} );
+		ProcessFile( $WorkingDir . "/" . $+{fn} );
 	} elsif ( $cmd =~ /^macro\s+(.*)$/si ) {
 		StartOB();									# plain text
 		eval( $1 ); warn $@ if $@;
@@ -204,7 +205,7 @@ sub OnClosing {
 		if ( $insetMode == OBMODE_ECHO ) {
 			print "print ${inside};\n";				# don't wrap in (), trailing semicolon
 		} elsif ( $insetMode == OBMODE_COMMAND ) {
-			ProcessCommand( $inside );
+			ExecuteCommand( $inside );
 		} else {
 			print $inside;
 		}
@@ -217,10 +218,12 @@ sub OnClosing {
 	StartOB( $plainMode );							# plain text
 }
 
-sub PerlPP {
+sub RunPerlPP {
 	my $contents = shift;							# reference
 	my $withinTag = 0;
+	my $lastPrep;
 
+	$lastPrep = $#Preprocessors;
 	StartOB();										# plain text
 
 	# TODO change this to a simple string searching (to speedup)
@@ -230,6 +233,12 @@ sub PerlPP {
 			print $1;
 			$$contents = $2;
 			OnClosing();
+			# that could have been a command, which added new preprocessors
+			# but we don't want to run previously executed preps the second time
+			while ( $lastPrep < $#Preprocessors ) {
+				$lastPrep++;
+				&{$Preprocessors[ $lastPrep ]}( $contents );
+			}
 			$withinTag = 0;
 			goto OPENING;
 		};
@@ -255,7 +264,7 @@ sub PerlPP {
 	print "print " . PrepareString( EndOB() ) . ";\n";
 }
 
-sub PreprocessFile {
+sub ProcessFile {
 	my $fname = shift;
 	my $wdir = "";
 	my $contents;
@@ -276,40 +285,35 @@ sub PreprocessFile {
 			$f = *STDIN;
 		}
 
-		<$f>;			# the file will be close automatically here
+		<$f>;			# the file will be closed automatically on the scope end
 	};
 
 	for $proc ( @Preprocessors ) {
-		StartOB();
-		&$proc( \$contents );
-		$contents = EndOB();
+		&$proc( \$contents );						# $contents is modified
 	}
 
-	print $contents;
+	RunPerlPP( \$contents );
 
 	if ( $wdir ) {
 		$WorkingDir = $wdir;
 	}
 }
 
-sub PostprocessAndOutput {
+sub OutputResult {
 	my $contents = shift;					# reference
 	my $fname = shift;
 	my $proc;
 	my $f;
+
+	for $proc ( @Postprocessors ) {
+		&$proc( $contents );
+	}
 
 	if ( $fname ) {
 		open( $f, ">", $fname ) or die $!;
 	} else {
 		open( $f, ">&STDOUT" ) or die $!;
 	}
-
-	for $proc ( @Postprocessors ) {
-		StartOB();
-		&$proc( $contents );
-		$$contents = EndOB();
-	}
-
 	print $f $$contents;
 	close( $f ) or die $!;
 }
@@ -338,22 +342,20 @@ sub Main {
 		# TODO tranfer parameters to the processed file
 	}
 
-	AddPreprocessor( \&PerlPP );					# will be the last preprocessing function
-
 	$Package = $inputFilename;
 	$Package =~ s/^([a-zA-Z_][a-zA-Z_0-9.]*).p$/$1/;
 	$Package =~ s/[.\/\\]/_/g;
 
 	StartOB();
-	print "package PPP_${Package}; use strict; use warnings; my %DEF = ();\n${argEval}\n";
-	PreprocessFile( $inputFilename );
+	print "package PPP_${Package};\nuse strict;\nuse warnings;\nmy %DEF = ();\n${argEval}\n";
+	ProcessFile( $inputFilename );
 	$script = EndOB();								# Perl script
 	if ( $argDebug ) {
 		print STDERR $script;
 	} else {
 		StartOB();									# output of the Perl script
 		eval( $script ); warn $@ if $@;
-		PostprocessAndOutput( \EndOB(), $outputFilename );
+		OutputResult( \EndOB(), $outputFilename );
 	}
 }
 
