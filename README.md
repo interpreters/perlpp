@@ -70,7 +70,7 @@ In this case words like `fooSomeWord` will become `barSomeWord`.
 Capturing
 ---------
 
-Sometimes it would be great to get (to capture) a text into a Perl string.  
+Sometimes it is great to get (capture) source text into a Perl string.  
 
 	"?>		start of capturing
 	<?"		end of capturing
@@ -106,6 +106,12 @@ so the result will be
 		ABCDEFGHIJKLMNOPQRSTUVWXYZ
 
 Capturing works in all modes: regular, echo or command mode.
+
+Custom Preprocessors
+--------------------
+
+It's possible to create your own pre/post-processors with `PerlPP::AddPreprocessor` and `PerlPP::AddPostprocessor`.  
+This feature is used in [BigBenBox](https://github.com/d-ash/BigBenBox) for generating code in the C programming language.
 
 Future
 ------
