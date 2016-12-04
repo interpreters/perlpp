@@ -34,6 +34,7 @@ use constant OBMODE_CAPTURE	=> 1;	# same as OBMODE_PLAIN but with capturing
 use constant OBMODE_CODE	=> 2;
 use constant OBMODE_ECHO	=> 3;
 use constant OBMODE_COMMAND	=> 4;
+use constant OBMODE_COMMENT	=> 5;
 
 my $Package = '';
 my @Preprocessors = ();
@@ -165,6 +166,8 @@ sub OnOpening {
 			$insetMode = OBMODE_ECHO;
 		} elsif ( $after =~ /^:/ ) {
 			$insetMode = OBMODE_COMMAND;
+		} elsif ( $after =~ /^#/ ) {
+			$insetMode = OBMODE_COMMENT;
 		} elsif ( $after =~ /^\// ) {
 			$plain .= "\n";
 			# OBMODE_CODE
@@ -206,6 +209,8 @@ sub OnClosing {
 			print "print ${inside};\n";				# don't wrap in (), trailing semicolon
 		} elsif ( $insetMode == OBMODE_COMMAND ) {
 			ExecuteCommand( $inside );
+		} elsif ( $insetMode == OBMODE_COMMENT ) {
+			# Ignore the contents - no operation
 		} else {
 			print $inside;
 		}
@@ -339,12 +344,13 @@ sub Main {
 		} else {
 			$inputFilename = $a;
 		}
-		# TODO tranfer parameters to the processed file
+		# TODO transfer parameters to the processed file
 	}
 
 	$Package = $inputFilename;
 	$Package =~ s/^([a-zA-Z_][a-zA-Z_0-9.]*).p$/$1/;
-	$Package =~ s/[.\/\\]/_/g;
+	$Package =~ s/[^a-z0-9]/_/gi;
+		# $Package is not the whole name, so can start with a number.
 
 	StartOB();
 	print "package PPP_${Package};\nuse strict;\nuse warnings;\nmy %DEF = ();\n${argEval}\n";
@@ -360,3 +366,4 @@ sub Main {
 }
 
 Main( @ARGV );
+
