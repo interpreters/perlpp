@@ -29,6 +29,7 @@ use constant TAG_CLOSE		=> '?' . '>';
 use constant OPENING_RE		=> qr/^(.*?)\Q${\(TAG_OPEN)}\E(.*)$/s;	# /s states for single-line mode
 use constant CLOSING_RE		=> qr/^(.*?)\Q${\(TAG_CLOSE)}\E(.*)$/s;
 
+# Modes - each output buffer has one
 use constant OBMODE_PLAIN	=> 0;
 use constant OBMODE_CAPTURE	=> 1;	# same as OBMODE_PLAIN but with capturing
 use constant OBMODE_CODE	=> 2;
@@ -40,9 +41,14 @@ my $Package = '';
 my @Preprocessors = ();
 my @Postprocessors = ();
 my $RootSTDOUT;
-my @OutputBuffers = ();
 my $WorkingDir = '.';
 my %Prefixes = ();
+
+# Output-buffer stack
+use constant OB_TOP => 0;	# top of the stack is in elem. 0 - shift pops
+my @OutputBuffers = ();		# each entry is a two-element list
+use constant OB_MODE => 0;
+use constant OB_CONTENTS => 1;
 
 sub PrintHelp {
 	print STDERR <<USAGE
@@ -75,9 +81,9 @@ sub StartOB {
 	}
 	unshift( @OutputBuffers, [ $mode, "" ] );
 	close( STDOUT );			# must be closed before redirecting it to a variable
-	open( STDOUT, ">>", \$OutputBuffers[ 0 ]->[ 1 ] ) or die $!;
+	open( STDOUT, ">>", \$OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ] ) or die $!;
 	$| = 1;						# do not use output buffering
-}
+} #StartOB()
 
 sub EndOB {
 	my $ob;
@@ -88,21 +94,22 @@ sub EndOB {
 		open( STDOUT, ">&", $RootSTDOUT ) or die $!;	# dup filehandle
 		$| = 0;					# return output buffering to the default state
 	} else {
-		open( STDOUT, ">>", \$OutputBuffers[ 0 ]->[ 1 ] ) or die $!;
+		open( STDOUT, ">>", \$OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ] ) 
+			or die $!;
 	}
-	return $ob->[ 1 ];
-}
+	return $ob->[ OB_CONTENTS ];
+} #EndOB
 
 sub ReadOB {
 	my $s;
 
-	$s = $OutputBuffers[ 0 ]->[ 1 ];
-	$OutputBuffers[ 0 ]->[ 1 ] = "";
+	$s = $OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ];
+	$OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ] = "";
 	return $s;
-}
+} #ReadOB()
 
 sub GetModeOfOB {
-	return $OutputBuffers[ 0 ]->[ 0 ];
+	return $OutputBuffers[ OB_TOP ]->[ OB_MODE ];
 }
 
 sub DQuoteString {
@@ -144,10 +151,12 @@ sub ExecuteCommand {
 		print "print " . PrepareString( EndOB() ) . ";\n";
 	} elsif ( $cmd =~ /^prefix\s+(\S+)\s+(\S+)\s*$/i ) {
 		$Prefixes{ $1 } = $2;
+	} elsif ( $cmd =~ /^define\s+(\S+)\s*$/i ) {
+		# TODO add to %DEF if that makes sense in terms of the control flow
 	} else {
 		die "Unknown PerlPP command: ${cmd}";
 	}
-}
+} #ExecuteCommand()
 
 sub OnOpening {
 	my $after = shift;
@@ -191,7 +200,7 @@ sub OnOpening {
 	}
 	return ( 1, "" ) unless $after;
 	return ( 1, substr( $after, 1 ) );
-}
+} #OnOpening()
 
 sub OnClosing {
 	my $inside;
@@ -221,10 +230,10 @@ sub OnClosing {
 		}
 	}
 	StartOB( $plainMode );							# plain text
-}
+} #OnClosing()
 
 sub RunPerlPP {
-	my $contents = shift;							# reference
+	my $contents_ref = shift;						# reference
 	my $withinTag = 0;
 	my $lastPrep;
 
@@ -234,29 +243,29 @@ sub RunPerlPP {
 	# TODO change this to a simple string searching (to speedup)
 	OPENING:
 	if ( $withinTag ) {
-		if ( $$contents =~ CLOSING_RE ) {
+		if ( $$contents_ref =~ CLOSING_RE ) {
 			print $1;
-			$$contents = $2;
+			$$contents_ref = $2;
 			OnClosing();
 			# that could have been a command, which added new preprocessors
 			# but we don't want to run previously executed preps the second time
 			while ( $lastPrep < $#Preprocessors ) {
 				$lastPrep++;
-				&{$Preprocessors[ $lastPrep ]}( $contents );
+				&{$Preprocessors[ $lastPrep ]}( $contents_ref );
 			}
 			$withinTag = 0;
 			goto OPENING;
 		};
 	} else {
-		if ( $$contents =~ OPENING_RE ) {
+		if ( $$contents_ref =~ OPENING_RE ) {
 			print $1;
-			( $withinTag, $$contents ) = OnOpening( $2 );
+			( $withinTag, $$contents_ref ) = OnOpening( $2 );
 			if ( $withinTag ) {
 				goto OPENING;
 			}
 		}
 	}
-	print $$contents;								# tail of a plain text
+	print $$contents_ref;							# tail of a plain text
 
 	if ( $withinTag ) {
 		die "Unfinished Perl inset";
@@ -267,12 +276,12 @@ sub RunPerlPP {
 
 	# getting the rest of the plain text
 	print "print " . PrepareString( EndOB() ) . ";\n";
-}
+} #RunPerlPP()
 
 sub ProcessFile {
 	my $fname = shift;
 	my $wdir = "";
-	my $contents;
+	my $contents;		# real string of $fname's contents
 	my $proc;
 	
 	# read the whole file
@@ -302,16 +311,16 @@ sub ProcessFile {
 	if ( $wdir ) {
 		$WorkingDir = $wdir;
 	}
-}
+} #ProcessFile()
 
 sub OutputResult {
-	my $contents = shift;					# reference
+	my $contents_ref = shift;					# reference
 	my $fname = shift;
 	my $proc;
 	my $f;
 
 	for $proc ( @Postprocessors ) {
-		&$proc( $contents );
+		&$proc( $contents_ref );
 	}
 
 	if ( $fname ) {
@@ -319,9 +328,9 @@ sub OutputResult {
 	} else {
 		open( $f, ">&STDOUT" ) or die $!;
 	}
-	print $f $$contents;
+	print $f $$contents_ref;
 	close( $f ) or die $!;
-}
+} #OutputResult()
 
 sub Main {
 	my $argEval = "";
@@ -363,7 +372,9 @@ sub Main {
 		eval( $script ); warn $@ if $@;
 		OutputResult( \EndOB(), $outputFilename );
 	}
-}
+} #Main()
 
 Main( @ARGV );
+
+# vi: set ts=4 sts=0 sw=4 noet ai: #
 
