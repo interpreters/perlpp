@@ -115,16 +115,16 @@ sub GetModeOfOB {
 sub DQuoteString {
 	my $s = shift;
 
-	$s =~ s/\\/\\\\/g;
-	$s =~ s/"/\\"/g;
+	$s =~ s{\\}{\\\\}g;
+	$s =~ s{"}{\\"}g;
 	return '"' . $s . '"';
 }
 
 sub QuoteString {
 	my $s = shift;
 
-	$s =~ s/\\/\\\\/g;
-	$s =~ s/'/\\'/g;
+	$s =~ s{\\}{\\\\}g;
+	$s =~ s{'}{\\'}g;
 	return "'" . $s . "'";
 }
 
@@ -177,7 +177,7 @@ sub OnOpening {
 			$insetMode = OBMODE_COMMAND;
 		} elsif ( $after =~ /^#/ ) {
 			$insetMode = OBMODE_COMMENT;
-		} elsif ( $after =~ /^\// ) {
+		} elsif ( $after =~ m{^\/} ) {
 			$plain .= "\n";
 			# OBMODE_CODE
 		} elsif ( $after =~ /^(?:\s|$)/ ) {
@@ -291,7 +291,7 @@ sub ProcessFile {
 
 		if ( $fname ) {
 			open( $f, "<", $fname ) or die "Cannot open '${fname}'";
-			if ( $fname =~ /^(.*)[\\\/][^\\\/]+$/ ) {
+			if ( $fname =~ m{^(.*)[\\\/][^\\\/]+$} ) {
 				$wdir = $WorkingDir;
 				$WorkingDir = $1;
 			}
