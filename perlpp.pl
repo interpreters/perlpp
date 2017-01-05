@@ -10,7 +10,7 @@
 	Options:
 		-o, --output filename       Output to the file instead of STDOUT.
 		-e, --eval expression       Evaluate the expression(s) before any Perl code.
-		-d, --debug                 Don't evaluate Perl code, just write it to STDERR.
+		-d, --debug                 Don't evaluate Perl code, just write the generated code to STDOUT.
 		-h, --help                  Usage help.
 
 	Some info about scoping in Perl:
@@ -50,8 +50,8 @@ my @OutputBuffers = ();		# each entry is a two-element list
 use constant OB_MODE => 0;
 use constant OB_CONTENTS => 1;
 
-sub PrintHelp {
-	print STDERR <<USAGE
+sub PrintHelp {		# print to STDOUT since the user requested the help
+	print <<USAGE
 Usage: perl perlpp.pl [options] [filename]
 Options:
 	-o, --output filename    Output to the file instead of STDOUT.
@@ -76,7 +76,7 @@ sub StartOB {
 
 	$mode = shift if @_;
 	if ( scalar @OutputBuffers == 0 ) {
-		$| = 1;					# flush a contents of STDOUT
+		$| = 1;					# flush contents of STDOUT
 		open( $RootSTDOUT, ">&STDOUT" ) or die $!;		# dup filehandle
 	}
 	unshift( @OutputBuffers, [ $mode, "" ] );
@@ -87,14 +87,14 @@ sub StartOB {
 
 sub EndOB {
 	my $ob;
-	
+
 	$ob = shift( @OutputBuffers );
 	close( STDOUT );
 	if ( scalar @OutputBuffers == 0 ) {
 		open( STDOUT, ">&", $RootSTDOUT ) or die $!;	# dup filehandle
 		$| = 0;					# return output buffering to the default state
 	} else {
-		open( STDOUT, ">>", \$OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ] ) 
+		open( STDOUT, ">>", \$OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ] )
 			or die $!;
 	}
 	return $ob->[ OB_CONTENTS ];
@@ -163,7 +163,7 @@ sub OnOpening {
 	my $plain;
 	my $plainMode;
 	my $insetMode = OBMODE_CODE;
-	
+
 	$plainMode = GetModeOfOB();
 	$plain = EndOB();								# plain text
 	if ( $after =~ /^"/ && $plainMode == OBMODE_CAPTURE ) {
@@ -283,7 +283,7 @@ sub ProcessFile {
 	my $wdir = "";
 	my $contents;		# real string of $fname's contents
 	my $proc;
-	
+
 	# read the whole file
 	$contents = do {
 		my $f;
@@ -364,9 +364,10 @@ sub Main {
 	StartOB();
 	print "package PPP_${Package};\nuse strict;\nuse warnings;\nmy %DEF = ();\n${argEval}\n";
 	ProcessFile( $inputFilename );
-	$script = EndOB();								# Perl script
+	$script = EndOB();								# The generated Perl script
+
 	if ( $argDebug ) {
-		print STDERR $script;
+		print $script;
 	} else {
 		StartOB();									# output of the Perl script
 		eval( $script ); warn $@ if $@;
