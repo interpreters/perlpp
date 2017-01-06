@@ -112,7 +112,8 @@ sub GetModeOfOB {
 	return $OutputBuffers[ OB_TOP ]->[ OB_MODE ];
 }
 
-sub DQuoteString {
+sub DQuoteString {	# wrap $_[0] in double-quotes, escaped properly
+	# Not currently used by PerlPP, but provided for use by scripts.
 	my $s = shift;
 
 	$s =~ s{\\}{\\\\}g;
@@ -120,7 +121,7 @@ sub DQuoteString {
 	return '"' . $s . '"';
 }
 
-sub QuoteString {
+sub QuoteString {	# wrap $_[0] in single-quotes, escaped properly
 	my $s = shift;
 
 	$s =~ s{\\}{\\\\}g;
@@ -145,14 +146,15 @@ sub ExecuteCommand {
 
 	if ( $cmd =~ /^include\s+(?:['"](?<fn>[^'"]+)['"]|(?<fn>\S+))\s*$/i ) {
 		ProcessFile( $WorkingDir . "/" . $+{fn} );
+
 	} elsif ( $cmd =~ /^macro\s+(.*)$/si ) {
 		StartOB();									# plain text
 		eval( $1 ); warn $@ if $@;
 		print "print " . PrepareString( EndOB() ) . ";\n";
+
 	} elsif ( $cmd =~ /^prefix\s+(\S+)\s+(\S+)\s*$/i ) {
 		$Prefixes{ $1 } = $2;
-	} elsif ( $cmd =~ /^define\s+(\S+)\s*$/i ) {
-		# TODO add to %DEF if that makes sense in terms of the control flow
+
 	} else {
 		die "Unknown PerlPP command: ${cmd}";
 	}
@@ -353,7 +355,7 @@ sub Main {
 		} else {
 			$inputFilename = $a;
 		}
-		# TODO transfer parameters to the processed file
+		# TODO get options to be passed to the script as part of %DEF
 	}
 
 	$Package = $inputFilename;
@@ -363,6 +365,8 @@ sub Main {
 
 	StartOB();
 	print "package PPP_${Package};\nuse strict;\nuse warnings;\nmy %DEF = ();\n${argEval}\n";
+	# TODO transfer parameters from the command line to the processed file.
+	# Per commit 7bbe05c, %DEF is for those parameters.
 	ProcessFile( $inputFilename );
 	$script = EndOB();								# The generated Perl script
 
