@@ -13,9 +13,11 @@
 		-d, --debug                 Don't evaluate Perl code, just write the generated code to STDOUT.
 		-h, --help                  Usage help.
 
-	Some info about scoping in Perl:
-	http://darkness.codefu.org/wordpress/2003/03/perl-scoping/
+	If no [filename] is given, input will be read from stdin.
 =cut
+
+# Some info about scoping in Perl:
+# http://darkness.codefu.org/wordpress/2003/03/perl-scoping/
 
 package PerlPP;
 our $VERSION = '0.1.0';
