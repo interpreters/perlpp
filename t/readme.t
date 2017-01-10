@@ -8,8 +8,12 @@ use constant CMD => 'perl perlpp.pl';
 
 my ($in, $out, $err);
 
-my @testcases=(
+my @testcases=(		# In the order they are given in README.md
 	# [$in, $out, $err (if any)]
+	['<?x this tag is passed as is ?> because "x" is not a valid mode',
+		'<?x this tag is passed as is ?> because "x" is not a valid mode'."\n"],
+			# TODO the extra \n appears to be because of
+			# return ( 0, $after . "\n" ); in perlpp.  Should this be present?
 	[ 	<<'SCRIPT',
 Hello <? print "world"; ?> (again).
 <?# I don't appear in the output ?>but I do.
@@ -51,6 +55,10 @@ RESULT
 		# Note: the blank line after "number:4" is the \n after the `<? } ?>`
 		# line, at the end of the heredoc.
 	],
+	['foo<? print "bar";?>',"foobar"],
+	['foo<?/ print "bar";?>',"foo\nbar"],
+	['foo<?:prefix foo bar ?>' . "\n" . 'foo fooSomeWord thingfoo',
+		"foo\nbar barSomeWord thingfoo"],
 	['<? print "?>That\'s cool<?" . "?>, really.<?"; ?>',
 		'That\'s cool, really.'],
 	['<? print \'That\\\'s cool\' . \', really.\'; ?>',

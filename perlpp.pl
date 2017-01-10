@@ -26,15 +26,15 @@ use v5.10;
 use strict;
 use warnings;
 
-use constant TAG_OPEN		=> '<' . '?';
-use constant TAG_CLOSE		=> '?' . '>';
+use constant TAG_OPEN		=> '<' . '?';	# literal < ? and ? > shouldn't
+use constant TAG_CLOSE		=> '?' . '>';	# appear in this file
 use constant OPENING_RE		=> qr/^(.*?)\Q${\(TAG_OPEN)}\E(.*)$/s;	# /s states for single-line mode
 use constant CLOSING_RE		=> qr/^(.*?)\Q${\(TAG_CLOSE)}\E(.*)$/s;
 
 # Modes - each output buffer has one
-use constant OBMODE_PLAIN	=> 0;
+use constant OBMODE_PLAIN	=> 0;	# literal text, not in tag_open/tag_close
 use constant OBMODE_CAPTURE	=> 1;	# same as OBMODE_PLAIN but with capturing
-use constant OBMODE_CODE	=> 2;
+use constant OBMODE_CODE	=> 2;	# perl code
 use constant OBMODE_ECHO	=> 3;
 use constant OBMODE_COMMAND	=> 4;
 use constant OBMODE_COMMENT	=> 5;
@@ -224,7 +224,7 @@ sub OnClosing {
 			ExecuteCommand( $inside );
 		} elsif ( $insetMode == OBMODE_COMMENT ) {
 			# Ignore the contents - no operation
-		} else {
+		} else {	# e.g., OBMODE_CODE
 			print $inside;
 		}
 

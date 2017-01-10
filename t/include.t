@@ -1,23 +1,21 @@
 #!/usr/bin/env perl -W
-# Some basic tests for perlpp
+# Tests of < ? :include ? >
 use strict;
 use warnings;
 use Test::More 'no_plan';
 use IPC::Run3;
 use constant CMD => 'perl perlpp.pl';
 
+(my $whereami = __FILE__) =~ s/include\.t$//;
+my $incfn = '"' . $whereami . 'included.txt"';
+
 my ($in, $out, $err);
 
 my @testcases=(
 	# [$in (the script), $out (expected output), $err (stderr output, if any)]
-	['<?= 2+2 ?>', "4"],
-	['<?= "hello" ?>', "hello"],
-	['<? print "?>hello, world!\'"<?" ; ?>', 'hello, world!\'"'],
-	['Foo <?= 2+2 ?> <? print "?>Howdy, "world!"  I\'m cool.<?"; ?> bar'."\n",
-		'Foo 4 Howdy, "world!"  I\'m cool. bar'."\n"],
-	['<?# This output file is tremendously boring. ?>',''],
-	['<?#ditto?>',''],
-	['<? my $foo=80; ?>#define QUUX (<?= $foo/40 ?>)', '#define QUUX (2)'],
+	['<?:include ' . $incfn . ' ?>',"a4b\n"],
+		# The newline comes from included.txt, which ends with a newline
+	['Hello, <?:include ' . $incfn . ' ?>!',"Hello, a4b\n!"],
 ); #@testcases
 
 for my $lrTest (@testcases) {
