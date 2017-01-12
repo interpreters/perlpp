@@ -20,7 +20,7 @@
 # http://darkness.codefu.org/wordpress/2003/03/perl-scoping/
 
 package PerlPP;
-our $VERSION = '0.1.0';
+our $VERSION = '0.2.0';
 
 use v5.10;
 use strict;
@@ -197,10 +197,9 @@ sub OnOpening {
 		} else {
 			StartOB( $plainMode );					# skip non-PerlPP insets
 			print $plain . TAG_OPEN;
-			return ( false, $after . "\n" );	#TODO why the newline?
-				# This is from 39b7abd, the very first version.
-				# Here $after is the entire rest of the input, so this tacks
-				# a newline on the very end.
+			return ( false, $after );
+				# Here $after is the entire rest of the input, so it is as if
+				# the TAG_OPEN had never occurred.
 		}
 
 		if ( $plainMode == OBMODE_CAPTURE ) {
