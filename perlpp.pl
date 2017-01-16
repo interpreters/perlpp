@@ -26,11 +26,21 @@ use v5.10;
 use strict;
 use warnings;
 
+use Getopt::Long;
+use Pod::Usage;
+
+# === Constants ===========================================================
 use constant true			=> 1;
 use constant false			=> 0;
 
+# Shell exit codes
+use constant EXIT_OK 		=> 0;	# success
+use constant EXIT_PROC_ERR 	=> 1;	# error during processing
+use constant EXIT_PARAM_ERR	=> 2;	# couldn't understand the command line
+
+# Constants for the parser
 use constant TAG_OPEN		=> '<' . '?';	# literal < ? and ? > shouldn't
-use constant TAG_CLOSE		=> '?' . '>';	# appear in this file
+use constant TAG_CLOSE		=> '?' . '>';	# appear in this file.
 use constant OPENING_RE		=> qr/^(.*?)\Q${\(TAG_OPEN)}\E(.*)$/s;	# /s states for single-line mode
 use constant CLOSING_RE		=> qr/^(.*?)\Q${\(TAG_CLOSE)}\E(.*)$/s;
 
@@ -42,6 +52,12 @@ use constant OBMODE_ECHO	=> 3;
 use constant OBMODE_COMMAND	=> 4;
 use constant OBMODE_COMMENT	=> 5;
 
+# Layout of the output-buffer stack.
+use constant OB_TOP 		=> 0;	# top of the stack is [0]: use [un]shift
+use constant OB_MODE 		=> 0;	# each stack entry is a two-element array
+use constant OB_CONTENTS 	=> 1;
+
+# === Globals =============================================================
 my $Package = '';
 my @Preprocessors = ();
 my @Postprocessors = ();
@@ -50,10 +66,9 @@ my $WorkingDir = '.';
 my %Prefixes = ();
 
 # Output-buffer stack
-use constant OB_TOP => 0;	# top of the stack is in elem. 0 - shift pops
-my @OutputBuffers = ();		# each entry is a two-element list
-use constant OB_MODE => 0;
-use constant OB_CONTENTS => 1;
+my @OutputBuffers = ();		# each entry is a two-element array
+
+# === Code ================================================================
 
 sub PrintHelp {		# print to STDOUT since the user requested the help
 	print <<USAGE
@@ -344,6 +359,70 @@ sub OutputResult {
 	close( $f ) or die $!;
 } #OutputResult()
 
+# === Command line ========================================================
+
+my %CMDLINE_OPTS = (
+    # hash from internal name to array reference of j
+    # [getopt-name, getopt-options, optional default-value]
+    # They are listed in alphabetical order by option name,
+	# lowercase before upper, although the code does not require that order.
+    # No defaults for negatable options ('!') or string-value options ('=s').
+
+	# TODO RESUME HERE split into [shortname, opts, default] and get
+	# rid of justname() below.
+    EVAL => ['e','|eval', false],
+	SHOULD_DEBUG => ['d','|debug', false],
+	# -h and --help reserved
+	# --man reserved
+	OUTPUT_FILENAME => ['o','|output'],
+	DEFS => ['s','|set=s%'],
+	# --usage reserved
+	# -? reserved
+);
+
+
+sub parse_command_line_into {	# takes reference to hash to populate
+	my $hrOptsOut = shift;
+
+    # Easier syntax for checking whether optional args were provided.
+    # Syntax thanks to http://www.perlmonks.org/?node_id=696592
+    local *have = sub { return exists($hrOptsOut->{$_[0]}); };
+
+	Getopt::Long::Configure 'gnu_getopt';
+
+    { # Set defaults so we don't have to test them with exists().
+        my @keys_with_defaults =
+            grep { (scalar @{$CMDLINE_OPTS{$_}})==3 } keys %CMDLINE_OPTS;
+        my @kvs =
+            map { $CMDLINE_OPTS{$_}->[0] => $CMDLINE_OPTS{$_}[2] }
+            @keys_with_defaults;    # map option name to default value
+
+        %$hrOptsOut = ( @kvs );
+    } #end default-setting
+
+    # Get options
+    GetOptions($hrOptsOut,  # destination hash
+        'usage|?', 'h|help', 'man',
+        map { $_->[0] . $_->[1] } values %CMDLINE_OPTS,    # options strs
+        )
+    or pod2usage(-verbose => 0, -exitval => EXIT_PARAM_ERR);    # unknown opt
+
+    # Help, if requested
+    pod2usage(-verbose => 0, -exitval => 1) if have('usage');
+    pod2usage(-verbose => 1, -exitval => 1) if have('help');
+    pod2usage(-verbose => 2, -exitval => 1) if have('man');
+
+    { # Map the option names from GetOptions back to the internal names we use,
+	  # e.g., $$hrOptsOut{"EVAL"} from $$hrOptsOut{"e"}.
+        my %revmap = map {  $CMDLINE_OPTS{$_}->[0] => $_ } keys %CMDLINE_OPTS;
+        for my $optname (keys %$hrOptsOut) {
+            $hrOptsOut->{$revmap{$optname}} = $hrOptsOut->{$optname};
+        }
+    } #end option mapping.
+
+} # parse_command_line_into
+
+# === Main ================================================================
 sub Main {
 	my $argEval = "";
 	my $argDebug = 0;
