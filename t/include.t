@@ -1,5 +1,5 @@
 #!/usr/bin/env perl -W
-# Tests of < ? :include ? >
+# Tests of < ? :include ? > and < ? :immediate Include ? >
 use strict;
 use warnings;
 use Test::More 'no_plan';
@@ -16,6 +16,8 @@ my @testcases=(
 	['<?:include ' . $incfn . ' ?>',"a4b\n"],
 		# The newline comes from included.txt, which ends with a newline
 	['Hello, <?:include ' . $incfn . ' ?>!',"Hello, a4b\n!"],
+	['<?:immediate Include ' . $incfn . ' ?>',"a4b\n"],
+	['Hello, <?:immediate Include ' . $incfn . ' ?>!',"Hello, a4b\n!"],
 ); #@testcases
 
 for my $lrTest (@testcases) {
