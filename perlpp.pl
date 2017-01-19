@@ -8,10 +8,10 @@
 
 	Usage: perl perlpp.pl [options] [filename]
 	Options:
-		-o, --output filename       Output to the file instead of STDOUT.
-		-e, --eval expression       Evaluate the expression(s) before any Perl code.
-		-d, --debug                 Don't evaluate Perl code, just write the generated code to STDOUT.
-		-h, --help                  Usage help.
+	    -o, --output filename       Output to the file instead of STDOUT.
+	    -e, --eval expression       Evaluate the expression(s) before any Perl code.
+	    -d, --debug                 Don't evaluate Perl code, just write the generated code to STDOUT.
+	    -h, --help                  Usage help.
 
 	If no [filename] is given, input will be read from stdin.
 =cut
@@ -22,7 +22,7 @@
 package PerlPP;
 our $VERSION = '0.2.0';
 
-use v5.10;
+use v5.10;		# provides // - http://perldoc.perl.org/perl5100delta.html
 use strict;
 use warnings;
 
@@ -74,10 +74,10 @@ sub PrintHelp {		# print to STDOUT since the user requested the help
 	print <<USAGE
 Usage: perl perlpp.pl [options] [filename]
 Options:
-	-o, --output filename    Output to the file instead of STDOUT.
-	-e, --eval expression    Evaluate the expression(s) before any Perl code.
-	-d, --debug              Don't evaluate Perl code, just write it to STDERR.
-	-h, --help               Usage help.
+    -o, --output filename    Output to the file instead of STDOUT.
+    -e, --eval expression    Evaluate the expression(s) before any Perl code.
+    -d, --debug              Don't evaluate Perl code, just write it to STDERR.
+    -h, --help               Usage help.
 USAGE
 	;
 }
@@ -306,7 +306,7 @@ sub RunPerlPP {
 } #RunPerlPP()
 
 sub ProcessFile {
-	my $fname = shift;
+	my $fname = shift;	# "" or other false value => STDIN
 	my $wdir = "";
 	my $contents;		# real string of $fname's contents
 	my $proc;
@@ -342,7 +342,7 @@ sub ProcessFile {
 
 sub OutputResult {
 	my $contents_ref = shift;					# reference
-	my $fname = shift;
+	my $fname = shift;	# "" or other false value => STDOUT
 	my $proc;
 	my $f;
 
@@ -362,109 +362,122 @@ sub OutputResult {
 # === Command line ========================================================
 
 my %CMDLINE_OPTS = (
-    # hash from internal name to array reference of j
-    # [getopt-name, getopt-options, optional default-value]
-    # They are listed in alphabetical order by option name,
+	# hash from internal name to array reference of j
+	# [getopt-name, getopt-options, optional default-value]
+	# They are listed in alphabetical order by option name,
 	# lowercase before upper, although the code does not require that order.
-    # No defaults for negatable options ('!') or string-value options ('=s').
 
-	# TODO RESUME HERE split into [shortname, opts, default] and get
-	# rid of justname() below.
-    EVAL => ['e','|eval', false],
-	SHOULD_DEBUG => ['d','|debug', false],
+	EVAL => ['e','|eval=s', ""],
+	DEBUG => ['d','|debug', false],
 	# -h and --help reserved
 	# --man reserved
-	OUTPUT_FILENAME => ['o','|output'],
+	# INPUT_FILENAME assigned by parse_command_line_into
+	OUTPUT_FILENAME => ['o','|output=s', ""],
 	DEFS => ['s','|set=s%'],
 	# --usage reserved
 	# -? reserved
 );
 
+sub parse_command_line_into {
+	# takes reference to hash to populate.  Fills in that hash with the
+	# values from the command line, keyed by the keys in %CMDLINE_OPTS.
 
-sub parse_command_line_into {	# takes reference to hash to populate
 	my $hrOptsOut = shift;
 
-    # Easier syntax for checking whether optional args were provided.
-    # Syntax thanks to http://www.perlmonks.org/?node_id=696592
-    local *have = sub { return exists($hrOptsOut->{$_[0]}); };
+	# Easier syntax for checking whether optional args were provided.
+	# Syntax thanks to http://www.perlmonks.org/?node_id=696592
+	local *have = sub { return exists($hrOptsOut->{ $_[0] }); };
 
 	Getopt::Long::Configure 'gnu_getopt';
 
-    { # Set defaults so we don't have to test them with exists().
-        my @keys_with_defaults =
-            grep { (scalar @{$CMDLINE_OPTS{$_}})==3 } keys %CMDLINE_OPTS;
-        my @kvs =
-            map { $CMDLINE_OPTS{$_}->[0] => $CMDLINE_OPTS{$_}[2] }
-            @keys_with_defaults;    # map option name to default value
+	{ # Set defaults so we don't have to test them with exists().
+		my @keys_with_defaults =
+			grep { (scalar @{$CMDLINE_OPTS{ $_ }})==3 } keys %CMDLINE_OPTS;
+		my @kvs =
+			map { $CMDLINE_OPTS{ $_ }->[0] => $CMDLINE_OPTS{ $_ }[2] }
+			@keys_with_defaults;	# map getopt option name to default value
 
-        %$hrOptsOut = ( @kvs );
-    } #end default-setting
+		%$hrOptsOut = ( @kvs );
+	} #end default-setting
 
-    # Get options
-    GetOptions($hrOptsOut,  # destination hash
-        'usage|?', 'h|help', 'man',
-        map { $_->[0] . $_->[1] } values %CMDLINE_OPTS,    # options strs
-        )
-    or pod2usage(-verbose => 0, -exitval => EXIT_PARAM_ERR);    # unknown opt
+	# Get options
+	GetOptions($hrOptsOut,  # destination hash
+		'usage|?', 'h|help', 'man',
+		map { $_->[0] . $_->[1] } values %CMDLINE_OPTS,	# options strs
+		)
+	or pod2usage(-verbose => 0, -exitval => EXIT_PARAM_ERR);	# unknown opt
 
-    # Help, if requested
-    pod2usage(-verbose => 0, -exitval => 1) if have('usage');
-    pod2usage(-verbose => 1, -exitval => 1) if have('help');
-    pod2usage(-verbose => 2, -exitval => 1) if have('man');
+	# Help, if requested
+	pod2usage(-verbose => 0, -exitval => EXIT_PROC_ERR) if have('usage');
+	pod2usage(-verbose => 1, -exitval => EXIT_PROC_ERR) if have('help');
+	pod2usage(-verbose => 2, -exitval => EXIT_PROC_ERR) if have('man');
 
-    { # Map the option names from GetOptions back to the internal names we use,
-	  # e.g., $$hrOptsOut{"EVAL"} from $$hrOptsOut{"e"}.
-        my %revmap = map {  $CMDLINE_OPTS{$_}->[0] => $_ } keys %CMDLINE_OPTS;
-        for my $optname (keys %$hrOptsOut) {
-            $hrOptsOut->{$revmap{$optname}} = $hrOptsOut->{$optname};
-        }
-    } #end option mapping.
+	{ # Map the option names from GetOptions back to the internal names we use,
+	  # e.g., $hrOptsOut->{EVAL} from $hrOptsOut->{e}.
+		my %revmap = map {  $CMDLINE_OPTS{$_}->[0] => $_ } keys %CMDLINE_OPTS;
+		for my $optname (keys %$hrOptsOut) {
+			$hrOptsOut->{ $revmap{$optname} } = $hrOptsOut->{ $optname };
+		}
+	} #end option mapping.
 
-} # parse_command_line_into
+	# Process other arguments.  TODO? support multiple input filenames?
+	if(@ARGV) {
+		$hrOptsOut->{INPUT_FILENAME} = $ARGV[0];
+		shift;
+	}
+
+} #parse_command_line_into()
 
 # === Main ================================================================
 sub Main {
-	my $argEval = "";
-	my $argDebug = 0;
-	my $inputFilename = "";
-	my $outputFilename = "";
-	my $script;
+	my %opts;
+	parse_command_line_into \%opts;
 
-	while ( my $a = shift ) {
-		if ( $a =~ /^(?:-h|--help)$/ ) {
-			PrintHelp();
-			exit;
-		} elsif ( $a =~ /^(?:-e|--eval)$/ ) {
-			$argEval .= shift or die "No eval expression is specified";
-			$argEval .= "\n";
-		} elsif ( $a =~ /^(?:-o|--output)$/ ) {
-			$outputFilename = shift or die "No output file is specified";
-		} elsif ( $a =~ /^(?:-d|--debug)$/ ) {
-			$argDebug = 1;
-		} else {
-			$inputFilename = $a;
-		}
-		# TODO get options to be passed to the script as part of %DEF
-	}
+	#my $argEval = "";
+	#my $argDebug = 0;
+	#my $inputFilename = "";
+	#my $outputFilename = "";
+	#my $script;
 
-	$Package = $inputFilename;
+#	while ( my $a = shift ) {
+#		if ( $a =~ /^(?:-h|--help)$/ ) {
+#			PrintHelp();
+#			exit;
+#		} elsif ( $a =~ /^(?:-e|--eval)$/ ) {
+#			$argEval .= shift or die "No eval expression is specified";
+#			$argEval .= "\n";
+#		} elsif ( $a =~ /^(?:-o|--output)$/ ) {
+#			$outputFilename = shift or die "No output file is specified";
+#		} elsif ( $a =~ /^(?:-d|--debug)$/ ) {
+#			$argDebug = 1;
+#		} else {
+#			$inputFilename = $a;
+#		}
+#		# TODO get options to be passed to the script as part of %DEF
+#	}
+
+	$Package = $opts{INPUT_FILENAME};
 	$Package =~ s/^([a-zA-Z_][a-zA-Z_0-9.]*).p$/$1/;
 	$Package =~ s/[^a-z0-9]/_/gi;
 		# $Package is not the whole name, so can start with a number.
 
 	StartOB();
-	print "package PPP_${Package};\nuse strict;\nuse warnings;\nmy %DEF = ();\n${argEval}\n";
+	print "package PPP_${Package};\nuse strict;\nuse warnings;\n";
+
 	# TODO transfer parameters from the command line to the processed file.
 	# Per commit 7bbe05c, %DEF is for those parameters.
-	ProcessFile( $inputFilename );
-	$script = EndOB();								# The generated Perl script
+	print "my %DEF = ();\n";
+	print $opts{EVAL}, "\n" if $opts{EVAL};
 
-	if ( $argDebug ) {
+	ProcessFile( $opts{INPUT_FILENAME} );
+	my $script = EndOB();							# The generated Perl script
+
+	if ( $opts{DEBUG} ) {
 		print $script;
 	} else {
 		StartOB();									# output of the Perl script
 		eval( $script ); warn $@ if $@;
-		OutputResult( \EndOB(), $outputFilename );
+		OutputResult( \EndOB(), $opts{OUTPUT_FILENAME} );
 	}
 } #Main()
 
