@@ -1,20 +1,5 @@
 #!/usr/bin/env perl
-
-=pod
-	PerlPP: Perl preprocessor
-	https://github.com/d-ash/perlpp
-	distributed under MIT license
-	by Andrey Shubin <andrey.shubin@gmail.com>
-
-	Usage: perl perlpp.pl [options] [filename]
-	Options:
-	    -o, --output filename       Output to the file instead of STDOUT.
-	    -e, --eval expression       Evaluate the expression(s) before any Perl code.
-	    -d, --debug                 Don't evaluate Perl code, just write the generated code to STDOUT.
-	    -h, --help                  Usage help.
-
-	If no [filename] is given, input will be read from stdin.
-=cut
+# PerlPP: Perl preprocessor.  See documentation after __END__.
 
 # Some info about scoping in Perl:
 # http://darkness.codefu.org/wordpress/2003/03/perl-scoping/
@@ -409,7 +394,7 @@ sub parse_command_line_into {
 
 	# Help, if requested
 	pod2usage(-verbose => 0, -exitval => EXIT_PROC_ERR) if have('usage');
-	pod2usage(-verbose => 1, -exitval => EXIT_PROC_ERR) if have('help');
+	pod2usage(-verbose => 1, -exitval => EXIT_PROC_ERR) if have('h');
 	pod2usage(-verbose => 2, -exitval => EXIT_PROC_ERR) if have('man');
 
 	{ # Map the option names from GetOptions back to the internal names we use,
@@ -421,10 +406,7 @@ sub parse_command_line_into {
 	} #end option mapping.
 
 	# Process other arguments.  TODO? support multiple input filenames?
-	if(@ARGV) {
-		$hrOptsOut->{INPUT_FILENAME} = $ARGV[0];
-		shift;
-	}
+	$hrOptsOut->{INPUT_FILENAME} = $ARGV[0] // "";
 
 } #parse_command_line_into()
 
@@ -432,29 +414,6 @@ sub parse_command_line_into {
 sub Main {
 	my %opts;
 	parse_command_line_into \%opts;
-
-	#my $argEval = "";
-	#my $argDebug = 0;
-	#my $inputFilename = "";
-	#my $outputFilename = "";
-	#my $script;
-
-#	while ( my $a = shift ) {
-#		if ( $a =~ /^(?:-h|--help)$/ ) {
-#			PrintHelp();
-#			exit;
-#		} elsif ( $a =~ /^(?:-e|--eval)$/ ) {
-#			$argEval .= shift or die "No eval expression is specified";
-#			$argEval .= "\n";
-#		} elsif ( $a =~ /^(?:-o|--output)$/ ) {
-#			$outputFilename = shift or die "No output file is specified";
-#		} elsif ( $a =~ /^(?:-d|--debug)$/ ) {
-#			$argDebug = 1;
-#		} else {
-#			$inputFilename = $a;
-#		}
-#		# TODO get options to be passed to the script as part of %DEF
-#	}
 
 	$Package = $opts{INPUT_FILENAME};
 	$Package =~ s/^([a-zA-Z_][a-zA-Z_0-9.]*).p$/$1/;
@@ -467,6 +426,7 @@ sub Main {
 	# TODO transfer parameters from the command line to the processed file.
 	# Per commit 7bbe05c, %DEF is for those parameters.
 	print "my %DEF = ();\n";
+
 	print $opts{EVAL}, "\n" if $opts{EVAL};
 
 	ProcessFile( $opts{INPUT_FILENAME} );
@@ -482,6 +442,55 @@ sub Main {
 } #Main()
 
 Main( @ARGV );
+
+__END__
+# ### Documentation #######################################################
+
+=pod
+
+=encoding UTF-8
+
+=head1 NAME
+
+PerlPP: Perl preprocessor
+
+=head1 USAGE
+
+perl perlpp.pl [options] [filename]
+
+If no [filename] is given, input will be read from stdin.
+
+=head1 OPTIONS
+
+=over
+
+=item -o, --output B<filename>
+
+Output to B<filename> instead of STDOUT.
+
+=item -e, --eval B<statement>
+
+Evaluate the B<statement> before any other Perl code in the generated
+script.
+
+=item -d, --debug
+
+Don't evaluate Perl code, just write the generated code to STDOUT.
+
+=item -h, --help
+
+Usage help.
+
+=back
+
+=head1 COPYRIGHT
+
+Code at L<https://github.com/d-ash/perlpp>.
+Distributed under MIT license.
+By Andrey Shubin (L<andrey.shubin@gmail.com>); additional contributions by
+Chris White (cxw42 at Github).
+
+=cut
 
 # vi: set ts=4 sts=0 sw=4 noet ai: #
 
