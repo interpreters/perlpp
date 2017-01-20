@@ -55,18 +55,6 @@ my @OutputBuffers = ();		# each entry is a two-element array
 
 # === Code ================================================================
 
-sub PrintHelp {		# print to STDOUT since the user requested the help
-	print <<USAGE
-Usage: perl perlpp.pl [options] [filename]
-Options:
-    -o, --output filename    Output to the file instead of STDOUT.
-    -e, --eval expression    Evaluate the expression(s) before any Perl code.
-    -d, --debug              Don't evaluate Perl code, just write it to STDERR.
-    -h, --help               Usage help.
-USAGE
-	;
-}
-
 sub AddPreprocessor {
 	push( @Preprocessors, shift );
 	# TODO run it!
@@ -364,7 +352,7 @@ my %CMDLINE_OPTS = (
 );
 
 sub parse_command_line_into {
-	# takes reference to hash to populate.  Fills in that hash with the
+	# Takes reference to hash to populate.  Fills in that hash with the
 	# values from the command line, keyed by the keys in %CMDLINE_OPTS.
 
 	my $hrOptsOut = shift;
@@ -375,15 +363,12 @@ sub parse_command_line_into {
 
 	Getopt::Long::Configure 'gnu_getopt';
 
-	{ # Set defaults so we don't have to test them with exists().
-		my @keys_with_defaults =
-			grep { (scalar @{$CMDLINE_OPTS{ $_ }})==3 } keys %CMDLINE_OPTS;
-		my @kvs =
-			map { $CMDLINE_OPTS{ $_ }->[0] => $CMDLINE_OPTS{ $_ }[2] }
-			@keys_with_defaults;	# map getopt option name to default value
-
-		%$hrOptsOut = ( @kvs );
-	} #end default-setting
+	# Set defaults so we don't have to test them with exists().
+	%$hrOptsOut = (		# map getopt option name to default value
+		map { $CMDLINE_OPTS{ $_ }->[0] => $CMDLINE_OPTS{ $_ }[2] }
+		grep { (scalar @{$CMDLINE_OPTS{ $_ }})==3 }
+		keys %CMDLINE_OPTS
+	);
 
 	# Get options
 	GetOptions($hrOptsOut,  # destination hash
@@ -397,13 +382,12 @@ sub parse_command_line_into {
 	pod2usage(-verbose => 1, -exitval => EXIT_PROC_ERR) if have('h');
 	pod2usage(-verbose => 2, -exitval => EXIT_PROC_ERR) if have('man');
 
-	{ # Map the option names from GetOptions back to the internal names we use,
-	  # e.g., $hrOptsOut->{EVAL} from $hrOptsOut->{e}.
-		my %revmap = map {  $CMDLINE_OPTS{$_}->[0] => $_ } keys %CMDLINE_OPTS;
-		for my $optname (keys %$hrOptsOut) {
-			$hrOptsOut->{ $revmap{$optname} } = $hrOptsOut->{ $optname };
-		}
-	} #end option mapping.
+	# Map the option names from GetOptions back to the internal names we use,
+	# e.g., $hrOptsOut->{EVAL} from $hrOptsOut->{e}.
+	my %revmap = map {  $CMDLINE_OPTS{$_}->[0] => $_ } keys %CMDLINE_OPTS;
+	for my $optname (keys %$hrOptsOut) {
+		$hrOptsOut->{ $revmap{$optname} } = $hrOptsOut->{ $optname };
+	}
 
 	# Process other arguments.  TODO? support multiple input filenames?
 	$hrOptsOut->{INPUT_FILENAME} = $ARGV[0] // "";
