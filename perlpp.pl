@@ -10,12 +10,14 @@
 	Options:
 		-o, --output filename       Output to the file instead of STDOUT.
 		-e, --eval expression       Evaluate the expression(s) before any Perl code.
-		-d, --debug                 Don't evaluate Perl code, just write it to STDERR.
+		-d, --debug                 Don't evaluate Perl code, just write the generated code to STDOUT.
 		-h, --help                  Usage help.
 
-	Some info about scoping in Perl:
-	http://darkness.codefu.org/wordpress/2003/03/perl-scoping/
+	If no [filename] is given, input will be read from stdin.
 =cut
+
+# Some info about scoping in Perl:
+# http://darkness.codefu.org/wordpress/2003/03/perl-scoping/
 
 package PerlPP;
 our $VERSION = '0.1.0';
@@ -24,14 +26,15 @@ use v5.10;
 use strict;
 use warnings;
 
-use constant TAG_OPEN		=> '<' . '?';
-use constant TAG_CLOSE		=> '?' . '>';
+use constant TAG_OPEN		=> '<' . '?';	# literal < ? and ? > shouldn't
+use constant TAG_CLOSE		=> '?' . '>';	# appear in this file
 use constant OPENING_RE		=> qr/^(.*?)\Q${\(TAG_OPEN)}\E(.*)$/s;	# /s states for single-line mode
 use constant CLOSING_RE		=> qr/^(.*?)\Q${\(TAG_CLOSE)}\E(.*)$/s;
 
-use constant OBMODE_PLAIN	=> 0;
+# Modes - each output buffer has one
+use constant OBMODE_PLAIN	=> 0;	# literal text, not in tag_open/tag_close
 use constant OBMODE_CAPTURE	=> 1;	# same as OBMODE_PLAIN but with capturing
-use constant OBMODE_CODE	=> 2;
+use constant OBMODE_CODE	=> 2;	# perl code
 use constant OBMODE_ECHO	=> 3;
 use constant OBMODE_COMMAND	=> 4;
 use constant OBMODE_COMMENT	=> 5;
@@ -40,12 +43,17 @@ my $Package = '';
 my @Preprocessors = ();
 my @Postprocessors = ();
 my $RootSTDOUT;
-my @OutputBuffers = ();
 my $WorkingDir = '.';
 my %Prefixes = ();
 
-sub PrintHelp {
-	print STDERR <<USAGE
+# Output-buffer stack
+use constant OB_TOP => 0;	# top of the stack is in elem. 0 - shift pops
+my @OutputBuffers = ();		# each entry is a two-element list
+use constant OB_MODE => 0;
+use constant OB_CONTENTS => 1;
+
+sub PrintHelp {		# print to STDOUT since the user requested the help
+	print <<USAGE
 Usage: perl perlpp.pl [options] [filename]
 Options:
 	-o, --output filename    Output to the file instead of STDOUT.
@@ -70,54 +78,56 @@ sub StartOB {
 
 	$mode = shift if @_;
 	if ( scalar @OutputBuffers == 0 ) {
-		$| = 1;					# flush a contents of STDOUT
+		$| = 1;					# flush contents of STDOUT
 		open( $RootSTDOUT, ">&STDOUT" ) or die $!;		# dup filehandle
 	}
 	unshift( @OutputBuffers, [ $mode, "" ] );
 	close( STDOUT );			# must be closed before redirecting it to a variable
-	open( STDOUT, ">>", \$OutputBuffers[ 0 ]->[ 1 ] ) or die $!;
+	open( STDOUT, ">>", \$OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ] ) or die $!;
 	$| = 1;						# do not use output buffering
-}
+} #StartOB()
 
 sub EndOB {
 	my $ob;
-	
+
 	$ob = shift( @OutputBuffers );
 	close( STDOUT );
 	if ( scalar @OutputBuffers == 0 ) {
 		open( STDOUT, ">&", $RootSTDOUT ) or die $!;	# dup filehandle
 		$| = 0;					# return output buffering to the default state
 	} else {
-		open( STDOUT, ">>", \$OutputBuffers[ 0 ]->[ 1 ] ) or die $!;
+		open( STDOUT, ">>", \$OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ] )
+			or die $!;
 	}
-	return $ob->[ 1 ];
-}
+	return $ob->[ OB_CONTENTS ];
+} #EndOB
 
 sub ReadOB {
 	my $s;
 
-	$s = $OutputBuffers[ 0 ]->[ 1 ];
-	$OutputBuffers[ 0 ]->[ 1 ] = "";
+	$s = $OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ];
+	$OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ] = "";
 	return $s;
-}
+} #ReadOB()
 
 sub GetModeOfOB {
-	return $OutputBuffers[ 0 ]->[ 0 ];
+	return $OutputBuffers[ OB_TOP ]->[ OB_MODE ];
 }
 
-sub DQuoteString {
+sub DQuoteString {	# wrap $_[0] in double-quotes, escaped properly
+	# Not currently used by PerlPP, but provided for use by scripts.
 	my $s = shift;
 
-	$s =~ s/\\/\\\\/g;
-	$s =~ s/"/\\"/g;
+	$s =~ s{\\}{\\\\}g;
+	$s =~ s{"}{\\"}g;
 	return '"' . $s . '"';
 }
 
-sub QuoteString {
+sub QuoteString {	# wrap $_[0] in single-quotes, escaped properly
 	my $s = shift;
 
-	$s =~ s/\\/\\\\/g;
-	$s =~ s/'/\\'/g;
+	$s =~ s{\\}{\\\\}g;
+	$s =~ s{'}{\\'}g;
 	return "'" . $s . "'";
 }
 
@@ -138,23 +148,26 @@ sub ExecuteCommand {
 
 	if ( $cmd =~ /^include\s+(?:['"](?<fn>[^'"]+)['"]|(?<fn>\S+))\s*$/i ) {
 		ProcessFile( $WorkingDir . "/" . $+{fn} );
+
 	} elsif ( $cmd =~ /^macro\s+(.*)$/si ) {
 		StartOB();									# plain text
 		eval( $1 ); warn $@ if $@;
 		print "print " . PrepareString( EndOB() ) . ";\n";
+
 	} elsif ( $cmd =~ /^prefix\s+(\S+)\s+(\S+)\s*$/i ) {
 		$Prefixes{ $1 } = $2;
+
 	} else {
 		die "Unknown PerlPP command: ${cmd}";
 	}
-}
+} #ExecuteCommand()
 
 sub OnOpening {
 	my $after = shift;
 	my $plain;
 	my $plainMode;
 	my $insetMode = OBMODE_CODE;
-	
+
 	$plainMode = GetModeOfOB();
 	$plain = EndOB();								# plain text
 	if ( $after =~ /^"/ && $plainMode == OBMODE_CAPTURE ) {
@@ -168,7 +181,7 @@ sub OnOpening {
 			$insetMode = OBMODE_COMMAND;
 		} elsif ( $after =~ /^#/ ) {
 			$insetMode = OBMODE_COMMENT;
-		} elsif ( $after =~ /^\// ) {
+		} elsif ( $after =~ m{^\/} ) {
 			$plain .= "\n";
 			# OBMODE_CODE
 		} elsif ( $after =~ /^(?:\s|$)/ ) {
@@ -191,7 +204,7 @@ sub OnOpening {
 	}
 	return ( 1, "" ) unless $after;
 	return ( 1, substr( $after, 1 ) );
-}
+} #OnOpening()
 
 sub OnClosing {
 	my $inside;
@@ -211,7 +224,7 @@ sub OnClosing {
 			ExecuteCommand( $inside );
 		} elsif ( $insetMode == OBMODE_COMMENT ) {
 			# Ignore the contents - no operation
-		} else {
+		} else {	# e.g., OBMODE_CODE
 			print $inside;
 		}
 
@@ -221,10 +234,10 @@ sub OnClosing {
 		}
 	}
 	StartOB( $plainMode );							# plain text
-}
+} #OnClosing()
 
 sub RunPerlPP {
-	my $contents = shift;							# reference
+	my $contents_ref = shift;						# reference
 	my $withinTag = 0;
 	my $lastPrep;
 
@@ -234,29 +247,29 @@ sub RunPerlPP {
 	# TODO change this to a simple string searching (to speedup)
 	OPENING:
 	if ( $withinTag ) {
-		if ( $$contents =~ CLOSING_RE ) {
+		if ( $$contents_ref =~ CLOSING_RE ) {
 			print $1;
-			$$contents = $2;
+			$$contents_ref = $2;
 			OnClosing();
 			# that could have been a command, which added new preprocessors
 			# but we don't want to run previously executed preps the second time
 			while ( $lastPrep < $#Preprocessors ) {
 				$lastPrep++;
-				&{$Preprocessors[ $lastPrep ]}( $contents );
+				&{$Preprocessors[ $lastPrep ]}( $contents_ref );
 			}
 			$withinTag = 0;
 			goto OPENING;
 		};
 	} else {
-		if ( $$contents =~ OPENING_RE ) {
+		if ( $$contents_ref =~ OPENING_RE ) {
 			print $1;
-			( $withinTag, $$contents ) = OnOpening( $2 );
+			( $withinTag, $$contents_ref ) = OnOpening( $2 );
 			if ( $withinTag ) {
 				goto OPENING;
 			}
 		}
 	}
-	print $$contents;								# tail of a plain text
+	print $$contents_ref;							# tail of a plain text
 
 	if ( $withinTag ) {
 		die "Unfinished Perl inset";
@@ -267,14 +280,14 @@ sub RunPerlPP {
 
 	# getting the rest of the plain text
 	print "print " . PrepareString( EndOB() ) . ";\n";
-}
+} #RunPerlPP()
 
 sub ProcessFile {
 	my $fname = shift;
 	my $wdir = "";
-	my $contents;
+	my $contents;		# real string of $fname's contents
 	my $proc;
-	
+
 	# read the whole file
 	$contents = do {
 		my $f;
@@ -282,7 +295,7 @@ sub ProcessFile {
 
 		if ( $fname ) {
 			open( $f, "<", $fname ) or die "Cannot open '${fname}'";
-			if ( $fname =~ /^(.*)[\\\/][^\\\/]+$/ ) {
+			if ( $fname =~ m{^(.*)[\\\/][^\\\/]+$} ) {
 				$wdir = $WorkingDir;
 				$WorkingDir = $1;
 			}
@@ -302,16 +315,16 @@ sub ProcessFile {
 	if ( $wdir ) {
 		$WorkingDir = $wdir;
 	}
-}
+} #ProcessFile()
 
 sub OutputResult {
-	my $contents = shift;					# reference
+	my $contents_ref = shift;					# reference
 	my $fname = shift;
 	my $proc;
 	my $f;
 
 	for $proc ( @Postprocessors ) {
-		&$proc( $contents );
+		&$proc( $contents_ref );
 	}
 
 	if ( $fname ) {
@@ -319,9 +332,9 @@ sub OutputResult {
 	} else {
 		open( $f, ">&STDOUT" ) or die $!;
 	}
-	print $f $$contents;
+	print $f $$contents_ref;
 	close( $f ) or die $!;
-}
+} #OutputResult()
 
 sub Main {
 	my $argEval = "";
@@ -344,7 +357,7 @@ sub Main {
 		} else {
 			$inputFilename = $a;
 		}
-		# TODO transfer parameters to the processed file
+		# TODO get options to be passed to the script as part of %DEF
 	}
 
 	$Package = $inputFilename;
@@ -354,16 +367,21 @@ sub Main {
 
 	StartOB();
 	print "package PPP_${Package};\nuse strict;\nuse warnings;\nmy %DEF = ();\n${argEval}\n";
+	# TODO transfer parameters from the command line to the processed file.
+	# Per commit 7bbe05c, %DEF is for those parameters.
 	ProcessFile( $inputFilename );
-	$script = EndOB();								# Perl script
+	$script = EndOB();								# The generated Perl script
+
 	if ( $argDebug ) {
-		print STDERR $script;
+		print $script;
 	} else {
 		StartOB();									# output of the Perl script
 		eval( $script ); warn $@ if $@;
 		OutputResult( \EndOB(), $outputFilename );
 	}
-}
+} #Main()
 
 Main( @ARGV );
+
+# vi: set ts=4 sts=0 sw=4 noet ai: #
 

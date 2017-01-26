@@ -17,19 +17,31 @@ Syntax
 
 Syntax is a bit similar to PHP.
 Perl code has to be included between `<?` and `?>` tags.
-There are several special modes:
+There are several modes, indicated by the opening tag:
 
+	<?	code mode: Perl code is between the tags.
 	<?=	echo mode: prints a Perl expression
-	<?:	command mode, executed by PerlPP itself
-	<?/	regular (code) mode with a line break appended to the previous text
+	<?:	command mode: executed by PerlPP itself (see below)
+	<?/	code mode, beginning with printing a line break.
 	<?#	comment mode: everything in <?# ... ?> is ignored.
 
-A regular mode is started with `<?` followed by any number of whitespaces or line breaks.
+The code mode is started by `<?` followed by any number of whitespaces
+or line breaks.
+
 If there is any non-whitespace character after `<?` other than those starting
 the special modes, then this tag will be ignored (passed as it is).
+For example:
 
-Example
--------
+	<?x this tag is passed as is ?> because "x" is not a valid mode
+
+produces the result:
+
+	<?x this tag is passed as is ?> because "x" is not a valid mode
+
+Examples
+--------
+
+### Basic loop
 
 	Hello <? print "world"; ?> (again).
 	<?# I don't appear in the output ?>but I do.
@@ -52,6 +64,8 @@ Result:
 
 		number: 4
 
+### Loop with less whitespace
+
 In order to remove empty lines, one might write it like this:
 
 	Hello <? print "world"; ?> (again).
@@ -67,6 +81,26 @@ Result:
 	number: 3
 	number: 4
 
+### Line breaks using `<?/`
+
+The example
+
+	foo<? print "bar";?>
+
+produces the output
+
+	foobar
+
+Adding the `/`, to make
+
+	foo<?/ print "bar";?>
+
+produces the output
+
+	foo
+	bar
+
+So `<?/ ... ?>` is effectively a shorthand for `<?/ print "\n"; ... ?>`.
 
 Commands
 --------
@@ -121,7 +155,7 @@ so the result will be
 	ALPHABET
 		ABCDEFGHIJKLMNOPQRSTUVWXYZ
 
-Capturing works in all modes: regular, echo or command mode.
+Capturing works in all modes: code, echo, or command mode.
 
 Custom Preprocessors
 --------------------
