@@ -434,13 +434,20 @@ sub Main {
 	StartOB();
 	print "package PPP_${Package};\nuse strict;\nuse warnings;\n";
 
-	# TODO transfer parameters from the command line to the processed file.
+	# Transfer parameters from the command line (-s) to the processed file.
 	# Per commit 7bbe05c, %DEF is for those parameters.
-	print "my %DEF = ();\n";
+	print "my %DEF = (\n";
+	for my $defname (keys %{$opts{DEFS}}) {
+		print "    $defname => ", ${$opts{DEFS}}{$defname}, "\n";
+	}
+	print ");\n";
 
+	# Initial code from the command line, if any
 	print $opts{EVAL}, "\n" if $opts{EVAL};
 
+	# The input file
 	ProcessFile( $opts{INPUT_FILENAME} );
+
 	my $script = EndOB();							# The generated Perl script
 
 	if ( $opts{DEBUG} ) {
