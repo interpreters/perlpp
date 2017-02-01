@@ -18,10 +18,13 @@ my @testcases=(
 	['--eval \'my $foo=42;\'','<?= $foo ?>', qr/^42$/],
 	['-d -e \'my $foo=42;\'','<?= $foo ?>', qr/^my \$foo=42;/m],
 	['--debug --eval \'my $foo=42;\'','<?= $foo ?>', qr/^print\s+\$foo\s*;/m],
-	['-s foo=1', '<?= $DEF{foo} ?>',qr/^1$/],
-	['-s foo=\"blah\"', '<?= $DEF{foo} ?>',qr/^blah$/],
+	['-s foo=1', '<?= $S{foo} ?>',qr/^1$/],
+	['-s foo=\"blah\"', '<?= $S{foo} ?>',qr/^blah$/],
 		# Have to escape the double-quotes so perl sees it as a string
 		# literal instead of a bareword.
+	['-s foo=42 -s bar=127', '<?= $S{foo} * $S{bar} ?>',qr/^5334$/],
+	['', '<? $S{x}="%S always exists even if empty"; ?><?= $S{x} ?>',
+		qr/^%S always exists even if empty$/],
 ); #@testcases
 
 #plan tests => scalar @testcases;
