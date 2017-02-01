@@ -2,7 +2,7 @@
 # Test running perlpp on itself - nothing should change
 use strict;
 use warnings;
-use Test::More 'no_plan';
+use Test::More tests => 1;
 use IPC::Run3;
 use constant CMD => 'perl perlpp.pl perlpp.pl';
 
