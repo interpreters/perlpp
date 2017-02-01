@@ -100,7 +100,7 @@ produces the output
 	foo
 	bar
 
-So `<?/ ... ?>` is effectively a shorthand for `<?/ print "\n"; ... ?>`.
+So `<?/ ... ?>` is effectively a shorthand for `<? print "\n"; ... ?>`.
 
 Commands
 --------
@@ -116,6 +116,15 @@ include plain text files or other literal files.
 
 Replaces word prefixes in the following output.
 In this case words like `fooSomeWord` will become `barSomeWord`.
+
+	<?:macro some_perl_code; ?>
+
+will run `some_perl_code;` at the time of script generation.  Whatever output
+the perl code produces will be included verbatim in the script output.
+This can be used to dynamically select which files you want to include,
+using
+
+	<?:macro Include "whatever_filename"; ?>
 
 Capturing
 ---------
@@ -180,3 +189,4 @@ and create corresponding *~/.vim/after/syntax/FILETYPE.vim*
 	syntax region PerlPP start='<?' end='?>' containedin=ALL
 
 FILETYPE can be determined with `:set ft?`
+

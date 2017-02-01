@@ -155,7 +155,7 @@ sub ExecuteCommand {
 	my $dir;
 
 	if ( $cmd =~ /^include\s+(?:['"](?<fn>[^'"]+)['"]|(?<fn>\S+))\s*$/i ) {
-		Include( $WorkingDir . "/" . $+{fn} );
+		ProcessFile( $WorkingDir . "/" . $+{fn} );
 
 	} elsif ( $cmd =~ /^macro\s+(.*)$/si ) {
 		StartOB();									# plain text
@@ -298,7 +298,7 @@ sub RunPerlPP {
 	print "print " . PrepareString( EndOB() ) . ";\n";
 } #RunPerlPP()
 
-sub Include {
+sub ProcessFile {
 	my $fname = shift;	# "" or other false value => STDIN
 	my $wdir = "";
 	my $contents;		# real string of $fname's contents
@@ -331,7 +331,14 @@ sub Include {
 	if ( $wdir ) {
 		$WorkingDir = $wdir;
 	}
-} #Include()
+} #ProcessFile()
+
+sub Include {	# As ProcessFile(), but for use within :macro
+	print "print " . PrepareString( EndOB() ) . ";\n";
+		# Close the OB opened by :macro
+	ProcessFile(shift);
+	StartOB();		# re-open a plain-text OB
+} #Include
 
 sub OutputResult {
 	my $contents_ref = shift;					# reference
@@ -433,7 +440,7 @@ sub Main {
 
 	print $opts{EVAL}, "\n" if $opts{EVAL};
 
-	Include( $opts{INPUT_FILENAME} );
+	ProcessFile( $opts{INPUT_FILENAME} );
 	my $script = EndOB();							# The generated Perl script
 
 	if ( $opts{DEBUG} ) {
