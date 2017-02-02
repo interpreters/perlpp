@@ -427,8 +427,8 @@ sub Main {
 	parse_command_line_into \%opts;
 
 	$Package = $opts{INPUT_FILENAME};
-	$Package =~ s/^([a-zA-Z_][a-zA-Z_0-9.]*).p$/$1/;
-	$Package =~ s/[^a-z0-9]/_/gi;
+	$Package =~ s/^.*?([a-z_][a-z_0-9.]*).pl?$/$1/i;
+	$Package =~ s/[^a-z0-9_]/_/gi;
 		# $Package is not the whole name, so can start with a number.
 
 	StartOB();
