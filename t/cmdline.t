@@ -12,19 +12,22 @@ my @testcases=(
 	['-d','',qr/^package PPP_;/],
 	['-d', '<?= 2+2 ?>', qr{print\s+2\+2\s*;}],
 	['--debug', '<?= 2+2 ?>', qr{print\s+2\+2\s*;}],
+	['-E', '<?= 2+2 ?>', qr{print\s+2\+2\s*;}],
 	['-h', '', qr/^Usage/],
 	['--help', '', qr/^Usage/],
 	['-e \'my $foo=42;\'','<?= $foo ?>', qr/^42$/],
 	['--eval \'my $foo=42;\'','<?= $foo ?>', qr/^42$/],
 	['-d -e \'my $foo=42;\'','<?= $foo ?>', qr/^my \$foo=42;/m],
 	['--debug --eval \'my $foo=42;\'','<?= $foo ?>', qr/^print\s+\$foo\s*;/m],
-	['-s foo=1', '<?= $S{foo} ?>',qr/^1$/],
-	['-s foo=\"blah\"', '<?= $S{foo} ?>',qr/^blah$/],
+	['-Dfoo', '<? print "yes" if $D{foo}; ?>',qr/^yes$/],
+	['-Dfoo=41025.5', '<?= $D{foo} ?>',qr/^41025.5$/],
+	['-D foo=2017', '<?= $D{foo} ?>',qr/^2017$/],
+	['-D foo=\"blah\"', '<?= $D{foo} ?>',qr/^blah$/],
 		# Have to escape the double-quotes so perl sees it as a string
 		# literal instead of a bareword.
-	['-s foo=42 -s bar=127', '<?= $S{foo} * $S{bar} ?>',qr/^5334$/],
-	['', '<? $S{x}="%S always exists even if empty"; ?><?= $S{x} ?>',
-		qr/^%S always exists even if empty$/],
+	['-D foo=42 -D bar=127', '<?= $D{foo} * $D{bar} ?>',qr/^5334$/],
+	['', '<? $D{x}="%D always exists even if empty"; ?><?= $D{x} ?>',
+		qr/^%D always exists even if empty$/],
 ); #@testcases
 
 #plan tests => scalar @testcases;

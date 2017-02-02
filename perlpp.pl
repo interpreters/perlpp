@@ -368,12 +368,12 @@ my %CMDLINE_OPTS = (
 	# lowercase before upper, although the code does not require that order.
 
 	EVAL => ['e','|eval=s', ""],
-	DEBUG => ['d','|debug', false],
+	DEBUG => ['d','|E|debug', false],
 	# -h and --help reserved
 	# --man reserved
 	# INPUT_FILENAME assigned by parse_command_line_into
 	OUTPUT_FILENAME => ['o','|output=s', ""],
-	DEFS => ['s','|set=s%'],
+	DEFS => ['D','|define:s%'],
 	# --usage reserved
 	# -? reserved
 );
@@ -398,9 +398,9 @@ sub parse_command_line_into {
 	);
 
 	# Get options
-	GetOptions($hrOptsOut,  # destination hash
-		'usage|?', 'h|help', 'man',
-		map { $_->[0] . $_->[1] } values %CMDLINE_OPTS,	# options strs
+	GetOptions($hrOptsOut,				# destination hash
+		'usage|?', 'h|help', 'man',		# options we handle here
+		map { $_->[0] . $_->[1] } values %CMDLINE_OPTS,		# options strs
 		)
 	or pod2usage(-verbose => 0, -exitval => EXIT_PARAM_ERR);	# unknown opt
 
@@ -411,7 +411,7 @@ sub parse_command_line_into {
 
 	# Map the option names from GetOptions back to the internal names we use,
 	# e.g., $hrOptsOut->{EVAL} from $hrOptsOut->{e}.
-	my %revmap = map {  $CMDLINE_OPTS{$_}->[0] => $_ } keys %CMDLINE_OPTS;
+	my %revmap = map { $CMDLINE_OPTS{$_}->[0] => $_ } keys %CMDLINE_OPTS;
 	for my $optname (keys %$hrOptsOut) {
 		$hrOptsOut->{ $revmap{$optname} } = $hrOptsOut->{ $optname };
 	}
@@ -432,13 +432,20 @@ sub Main {
 		# $Package is not the whole name, so can start with a number.
 
 	StartOB();
-	print "package PPP_${Package};\nuse strict;\nuse warnings;\n";
+	print "package PPP_${Package};\nuse 5.010;\nuse strict;\nuse warnings;\n";
+	print "use constant { true => !!1, false => !!0 };\n";
 
-	# Transfer parameters from the command line (-s) to the processed file.
-	# The parameters are in %S, by analogy with -s.
-	print "my %S = (\n";
+	# Transfer parameters from the command line (-D) to the processed file.
+	# The parameters are in %D, by analogy with -D.
+	print "my %D = (\n";
 	for my $defname (keys %{$opts{DEFS}}) {
-		print "    $defname => ", ${$opts{DEFS}}{$defname}, ",\n";
+		my $val = ${$opts{DEFS}}{$defname} // 'true';
+			# just in case it's undef.  "true" is the constant in this context
+		$val = 'true' if $val eq '';
+			# "-D foo" (without a value) sets it to _true_ so
+			# "if($D{foo})" will work.  Getopt::Long gives us '' as the
+			# value in that situation.
+		print "    $defname => $val,\n";
 	}
 	print ");\n";
 
@@ -478,6 +485,8 @@ perl perlpp.pl [options] [filename]
 
 If no [filename] is given, input will be read from stdin.
 
+Run C<perlpp --help> for a quick reference, or C<perlpp --man> for full docs.
+
 =head1 OPTIONS
 
 =over
@@ -486,46 +495,76 @@ If no [filename] is given, input will be read from stdin.
 
 Output to B<filename> instead of STDOUT.
 
-=item -s, --set B<name>=B<value>
+=item -D, --define B<name>=B<value>
 
-In the generated script, set C<< $S{B<name>} >> to B<value>.
-The hash C<%S> always exists, but is empty if no B<-s> options are
+In the generated script, set C<< $D{B<name>} >> to B<value>.
+The hash C<%D> always exists, but is empty if no B<-D> options are
 given on the command line.
 
-Note: If your shell strips quotes, you may need to escape them.  B<value> must
+If you omit the B<< =value >>, the value will be the constant C<true>
+(see L</"The generated script">, below).
+
+Note: If your shell strips quotes, you may need to escape them: B<value> must
 be a valid Perl expression.  So, under bash, this works:
 
-    perlpp -s name=\"Hello, world!\"
+	perlpp -D name=\"Hello, world!\"
 
 The backslashes (C<\"> instead of C<">) are required to prevent bash
 from removing the double-quotes.  Alternatively, this works:
 
-    perlpp -s 'name="Hello, World"'
+	perlpp -D 'name="Hello, World"'
 
-with the whole argument to B<-s> in single quotes.
+with the whole argument to B<-D> in single quotes.
+
+Also note that the space after B<-D> is optional, so
+
+	perlpp -Dfoo
+	perlpp -Dbar=42
+
+both work.
 
 =item -e, --eval B<statement>
 
 Evaluate the B<statement> before any other Perl code in the generated
 script.
 
-=item -d, --debug
+=item -E, --debug (or -d for backwards compatibility)
 
 Don't evaluate Perl code, just write the generated code to STDOUT.
-
-=item -h, --help
-
-Usage help.
+By analogy with the C<-E> option of gcc.
 
 =item --man
 
-Full documentation
+Full documentation, viewed in your default pager if configured.
+
+=item -h, --help
+
+Usage help, printed to STDOUT.
 
 =item -?, --usage
 
 Shows just the usage summary
 
 =back
+
+=head1 THE GENERATED SCRIPT
+
+The code you specify in the input file is in a Perl environment with the
+following definitions in place:
+
+	package PPP_foo;
+	use 5.010;
+	use strict;
+	use warnings;
+	use constant { true => !!1, false => !!0 };
+
+where B<foo> is the input filename, if any, transformed to only include
+[A-Za-z0-9_].
+
+This preamble requires Perl 5.10, which perlpp itself requires.
+On the plus side, requring v5.10 gives you C<//>
+(the defined-or operator) and the builtin C<say>.
+The preamble also keeps you safe from some basic issues.
 
 =head1 COPYRIGHT
 
