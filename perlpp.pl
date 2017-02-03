@@ -31,6 +31,9 @@ use constant TAG_CLOSE		=> '?' . '>';	# appear in this file.
 use constant OPENING_RE		=> qr/^(.*?)\Q${\(TAG_OPEN)}\E(.*)$/s;	# /s states for single-line mode
 use constant CLOSING_RE		=> qr/^(.*?)\Q${\(TAG_CLOSE)}\E(.*)$/s;
 
+use constant DEFINE_NAME_RE	=> qr/^[[:alpha:]][[:alnum:]_]+$/;
+	# Valid names for -D.  TODO expand this to Unicode.
+
 # Modes - each output buffer has one
 use constant OBMODE_PLAIN	=> 0;	# literal text, not in tag_open/tag_close
 use constant OBMODE_CAPTURE	=> 1;	# same as OBMODE_PLAIN but with capturing
@@ -414,6 +417,11 @@ sub parse_command_line_into {
 	my %revmap = map { $CMDLINE_OPTS{$_}->[0] => $_ } keys %CMDLINE_OPTS;
 	for my $optname (keys %$hrOptsOut) {
 		$hrOptsOut->{ $revmap{$optname} } = $hrOptsOut->{ $optname };
+	}
+
+	# Check the names of any -D flags
+	for my $k (keys %{$hrOptsOut->{DEFS}}) {
+		die("Invalid key name \"$k\"") if $k !~ DEFINE_NAME_RE;
 	}
 
 	# Process other arguments.  TODO? support multiple input filenames?
