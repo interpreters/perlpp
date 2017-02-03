@@ -9,16 +9,24 @@ use constant CMD => 'perl perlpp.pl';
 my @testcases=(
 	# [$cmdline_options, $in (the script), $out_re (expected output),
 	#	$err_re (stderr output, if any)]
+
+	# Debug output
 	['-d','',qr/^package PPP_;/],
 	['-d', '<?= 2+2 ?>', qr{print\s+2\+2\s*;}],
 	['--debug', '<?= 2+2 ?>', qr{print\s+2\+2\s*;}],
 	['-E', '<?= 2+2 ?>', qr{print\s+2\+2\s*;}],
+
+	# Usage
 	['-h', '', qr/^Usage/],
 	['--help', '', qr/^Usage/],
+
+	# Eval at start of file
 	['-e \'my $foo=42;\'','<?= $foo ?>', qr/^42$/],
 	['--eval \'my $foo=42;\'','<?= $foo ?>', qr/^42$/],
 	['-d -e \'my $foo=42;\'','<?= $foo ?>', qr/^my \$foo=42;/m],
 	['--debug --eval \'my $foo=42;\'','<?= $foo ?>', qr/^print\s+\$foo\s*;/m],
+
+	# Definitions
 	['-Dfoo', '<? print "yes" if $D{foo}; ?>',qr/^yes$/],
 	['-Dfoo=41025.5', '<?= $D{foo} ?>',qr/^41025.5$/],
 	['-D foo=2017', '<?= $D{foo} ?>',qr/^2017$/],
@@ -28,6 +36,29 @@ my @testcases=(
 	['-D foo=42 -D bar=127', '<?= $D{foo} * $D{bar} ?>',qr/^5334$/],
 	['', '<? $D{x}="%D always exists even if empty"; ?><?= $D{x} ?>',
 		qr/^%D always exists even if empty$/],
+
+	# Conditionals
+	['-Dfoo=42','<?:if foo==2?>yes<?:else?>no<?:endif?>',qr/^no$/ ],
+	['-Dfoo=2','<?:if foo==2?>yes<?:else?>no<?:endif?>',qr/^yes$/ ],
+	['-Dfoo','<?:if foo==2?>yes<?:else?>no<?:endif?>',qr/^no$/ ],
+	['-Dfoo','<?:if foo==1?>yes<?:else?>no<?:endif?>',qr/^yes$/ ],
+		# The default value is true, which compares equal to 1.
+	['-Dfoo','<?:if foo?>yes<?:else?>no<?:endif?>',qr/^yes$/ ],
+	['','<?:if foo?>yes<?:else?>no<?:endif?>',qr/^no$/ ],
+	['','<?:if foo==2?>yes<?:else?>no<?:endif?>',qr/^no$/ ],
+		# For consistency, all :if tests evaluate to false if the
+		# named variable is not defined.
+
+	# Three forms of elsif
+	['', '<?:if foo eq "1" ?>yes<?:elif foo eq "x" ?>maybe<?:else?>no<?:endif?>', qr/^no$/],
+	['', '<?:if foo eq "1" ?>yes<?:elsif foo eq "x" ?>maybe<?:else?>no<?:endif?>', qr/^no$/],
+	['', '<?:if foo eq "1" ?>yes<?:elseif foo eq "x" ?>maybe<?:else?>no<?:endif?>', qr/^no$/],
+
+	['-Dfoo', '<?:if foo eq "1" ?>yes<?:elsif foo eq "x" ?>maybe<?:else?>no<?:endif?>', qr/^yes$/],
+	['-Dfoo=1', '<?:if foo eq "1" ?>yes<?:elsif foo eq "x" ?>maybe<?:else?>no<?:endif?>', qr/^yes$/],
+		# Automatic conversion of numeric 1 to string in "eq" context
+	['-Dfoo=\\"x\\"', '<?= $D{foo} . "\n" ?><?:if foo eq "1" ?>yes<?:elsif foo eq "x" ?>maybe<?:else?>no<?:endif?>', qr/^x\nmaybe$/],
+	['-Dfoo=\\"y\\"', '<?:if foo eq "1" ?>yes<?:elsif foo eq "x" ?>maybe<?:else?>no<?:endif?>', qr/^no$/],
 ); #@testcases
 
 #plan tests => scalar @testcases;
@@ -38,6 +69,7 @@ for my $lrTest (@testcases) {
 	my ($opts, $testin, $out_re, $err_re) = @$lrTest;
 
 	my ($out, $err);
+	#print STDERR CMD . " $opts", " <<<'", $testin, "'\n";
 	run3 CMD . " $opts", \$testin, \$out, \$err;
 
 	if(defined $out_re) {
@@ -46,6 +78,7 @@ for my $lrTest (@testcases) {
 	if(defined $err_re) {
 		like($err, $err_re);
 	}
+	#print STDERR "$err\n";
 
 } # foreach test
 

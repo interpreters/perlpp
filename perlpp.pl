@@ -31,8 +31,16 @@ use constant TAG_CLOSE		=> '?' . '>';	# appear in this file.
 use constant OPENING_RE		=> qr/^(.*?)\Q${\(TAG_OPEN)}\E(.*)$/s;	# /s states for single-line mode
 use constant CLOSING_RE		=> qr/^(.*?)\Q${\(TAG_CLOSE)}\E(.*)$/s;
 
-use constant DEFINE_NAME_RE	=> qr/^[[:alpha:]][[:alnum:]_]+$/;
+use constant DEFINE_NAME_RE	=> qr/^[[:alpha:]][[:alnum:]_]+$/i;
 	# Valid names for -D.  TODO expand this to Unicode.
+use constant IF_EXPR_RE		=> qr/^if\s+(?<nm>[[:alpha:]][[:alnum:]_]+)(?<exp>.*)$/i;
+	# Expression for a :if command - a name, plus anything else
+	# (which must be valid perl)
+	# TODO once DEFINE_NAME_RE has been expanded, improve the error message.
+	# With this, "if +foo" throws "Unknown command 'if +foo'",
+	# but it should throw "bad name '+foo'".
+use constant ELSIF_EXPR_RE	=> qr/^(elif|elsif|elseif)\s+(?<nm>[[:alpha:]][[:alnum:]_]+)(?<exp>.*)$/i;
+	# TODO update this along with IF_EXPR_RE
 
 # Modes - each output buffer has one
 use constant OBMODE_PLAIN	=> 0;	# literal text, not in tag_open/tag_close
@@ -171,10 +179,20 @@ sub ExecuteCommand {
 	} elsif ( $cmd =~ /^prefix\s+(\S+)\s+(\S+)\s*$/i ) {
 		$Prefixes{ $1 } = $2;
 
-	} elsif ( $cmd =~ /^ifdef\s+(?<nm>\S+)\s*$/i ) {	# test in $D
+	} elsif ( $cmd =~ /^ifdef\s+(?<nm>\S+)\s*$/i ) {	# test in %D
 		my $nm = $+{nm};		# Otherwise !~ clobbers it.
 		die("Invalid name \"$nm\" in ifdef") if $nm !~ DEFINE_NAME_RE;
 		print "if(defined(\$D\{$nm\})) {\n";
+
+	} elsif ( $cmd =~ IF_EXPR_RE ) {	# :if - General test of %D values
+		my $ref="\$D\{$+{nm}\}";
+		print "if(exists($ref) && ( $ref $+{exp} ) ) {\n";
+			# Test exists() first so undef maps to false rather than warning.
+
+	} elsif ( $cmd =~ ELSIF_EXPR_RE ) {	# :elsif with condition
+		my $ref="\$D\{$+{nm}\}";
+		print "} elsif(exists($ref) && ( $ref $+{exp} ) ) {\n";
+			# Test exists() first so undef maps to false rather than warning.
 
 	} elsif ( $cmd =~ /^else\s*$/i ) {
 		print "} else {\n";
