@@ -171,6 +171,17 @@ sub ExecuteCommand {
 	} elsif ( $cmd =~ /^prefix\s+(\S+)\s+(\S+)\s*$/i ) {
 		$Prefixes{ $1 } = $2;
 
+	} elsif ( $cmd =~ /^ifdef\s+(?<nm>\S+)\s*$/i ) {	# test in $D
+		my $nm = $+{nm};		# Otherwise !~ clobbers it.
+		die("Invalid name \"$nm\" in ifdef") if $nm !~ DEFINE_NAME_RE;
+		print "if(defined(\$D\{$nm\})) {\n";
+
+	} elsif ( $cmd =~ /^else\s*$/i ) {
+		print "} else {\n";
+
+	} elsif ( $cmd =~ /^endif\s*$/i ) {				# end of a block
+		print "}\n";
+
 	} else {
 		die "Unknown PerlPP command: ${cmd}";
 	}
