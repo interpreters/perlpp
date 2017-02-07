@@ -26,8 +26,14 @@ my @testcases=(
 	['-d -e \'my $foo=42;\'','<?= $foo ?>', qr/^my \$foo=42;/m],
 	['--debug --eval \'my $foo=42;\'','<?= $foo ?>', qr/^print\s+\$foo\s*;/m],
 
-	# Definitions
+	# Definitions: name formats
 	['-Dfoo', '<? print "yes" if $D{foo}; ?>',qr/^yes$/],
+	['-Dfoo42', '<? print "yes" if $D{foo42}; ?>',qr/^yes$/],
+	['-Dfoo_42', '<? print "yes" if $D{foo_42}; ?>',qr/^yes$/],
+	['-D_x', '<? print "yes" if $D{_x}; ?>',qr/^yes$/],
+	['-D_1', '<? print "yes" if $D{_1}; ?>',qr/^yes$/],
+
+	# Definitions: values
 	['-Dfoo=41025.5', '<?= $D{foo} ?>',qr/^41025.5$/],
 	['-D foo=2017', '<?= $D{foo} ?>',qr/^2017$/],
 	['-D foo=\"blah\"', '<?= $D{foo} ?>',qr/^blah$/],
