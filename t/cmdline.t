@@ -33,6 +33,13 @@ my @testcases=(
 	['-D_x', '<? print "yes" if $D{_x}; ?>',qr/^yes$/],
 	['-D_1', '<? print "yes" if $D{_1}; ?>',qr/^yes$/],
 
+	# Definitions: :define/:undef
+	['','<?:define foo?><?:ifdef foo?>yes<?:else?>no<?:endif?>',qr/^yes$/],
+	['','<?:define foo 42?><?:ifdef foo?>yes<?:else?>no<?:endif?>',qr/^yes$/],
+	['','<?:define foo 42?><?= $D{foo} ?>',qr/^42$/],
+	['','<?:define foo "a" . "b" ?><?= $D{foo} ?>',qr/^ab$/],
+	['-Dfoo','<?:undef foo?><?:ifdef foo?>yes<?:else?>no<?:endif?>',qr/^no$/],
+
 	# Definitions: values
 	['-Dfoo=41025.5', '<?= $D{foo} ?>',qr/^41025.5$/],
 	['-D foo=2017', '<?= $D{foo} ?>',qr/^2017$/],

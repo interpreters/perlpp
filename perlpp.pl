@@ -32,12 +32,12 @@ use constant OPENING_RE		=> qr/^(.*?)\Q${\(TAG_OPEN)}\E(.*)$/s;	# /s states for 
 use constant CLOSING_RE		=> qr/^(.*?)\Q${\(TAG_CLOSE)}\E(.*)$/s;
 
 use constant DEFINE_NAME_RE	=>
-	qr/^([[:alpha:]][[:alnum:]_]*|[[:alpha:]_][[:alnum:]_]+)$/i;
+		 qr/^([[:alpha:]][[:alnum:]_]*|[[:alpha:]_][[:alnum:]_]+)$/i;
 	# Valid names for -D.  TODO expand this to Unicode.
 	# Bare underscore isn't permitted because it's special in perl.
 use constant DEFINE_NAME_IN_CONTEXT_RE	=>
 	qr/^(?<nm>[[:alpha:]][[:alnum:]_]*|[[:alpha:]_][[:alnum:]_]+)\s*+(?<rest>.*+)$/i;
-	# A valid name followed by something else.  Used for :if and :elsif.
+	# A valid name followed by something else.  Used for, e.g., :if and :elsif.
 
 # Modes - each output buffer has one
 use constant OBMODE_PLAIN	=> 0;	# literal text, not in tag_open/tag_close
@@ -176,21 +176,38 @@ sub ExecuteCommand {
 	} elsif ( $cmd =~ /^prefix\s+(\S+)\s+(\S+)\s*$/i ) {
 		$Prefixes{ $1 } = $2;
 
+	# Definitions
+	} elsif ( $cmd =~ /^define\s+(.*)$/i ) {			# set in %D
+		my $test = $1;	# Otherwise !~ clobbers it.
+		if( $test !~ DEFINE_NAME_IN_CONTEXT_RE ) {
+			die "Could not understand \"define\" command \"$test\"." .
+				"  Maybe an invalid variable name?";
+		}
+		my $nm = $+{nm};
+		my $rest = $+{rest};
+
+		# Set the default value to true if non provided
+		$rest =~ s/^\s+|\s+$//g;			# trim whitespace
+		$rest='true' if not length($rest);	# default to true
+
+		print "\$D\{$nm\} = ($rest) ;\n";
+
 	} elsif ( $cmd =~ /^undef\s+(?<nm>\S+)\s*$/i ) {	# clear from %D
-		my $nm = $+{nm};		# Otherwise !~ clobbers it.
-		die("Invalid name \"$nm\" in ifdef") if $nm !~ DEFINE_NAME_RE;
+		my $nm = $+{nm};
+		die "Invalid name \"$nm\" in \"undef\"" if $nm !~ DEFINE_NAME_RE;
 		print "\$D\{$nm\} = undef;\n";
 
+	# Conditionals
 	} elsif ( $cmd =~ /^ifdef\s+(?<nm>\S+)\s*$/i ) {	# test in %D
 		my $nm = $+{nm};		# Otherwise !~ clobbers it.
-		die("Invalid name \"$nm\" in ifdef") if $nm !~ DEFINE_NAME_RE;
-		print "if(defined(\$D\{$nm\})) {\n";
+		die "Invalid name \"$nm\" in \"ifdef\"" if $nm !~ DEFINE_NAME_RE;
+		print "if(defined(\$D\{$nm\})) {\n";	# Don't need exists()
 
 	} elsif ( $cmd =~ /^if\s+(.*)$/i ) {	# :if - General test of %D values
 		my $test = $1;		# $1 =~ doesn't work for me
 		if( $test !~ DEFINE_NAME_IN_CONTEXT_RE ) {
-			die("Could not understand \"if\" command \"$test\"." .
-				"  Maybe an invalid variable name?");
+			die "Could not understand \"if\" command \"$test\"." .
+				"  Maybe an invalid variable name?";
 		}
 		my $ref="\$D\{$+{nm}\}";
 		print "if(exists($ref) && ( $ref $+{rest} ) ) {\n";
@@ -200,8 +217,8 @@ sub ExecuteCommand {
 		my $cmd = $1;
 		my $test = $2;
 		if( $test !~ DEFINE_NAME_IN_CONTEXT_RE ) {
-			die("Could not understand \"$cmd\" command \"$test\"." .
-				"  Maybe an invalid variable name?");
+			die "Could not understand \"$cmd\" command \"$test\"." .
+				"  Maybe an invalid variable name?";
 		}
 		my $ref="\$D\{$+{nm}\}";
 		print "} elsif(exists($ref) && ( $ref $+{rest} ) ) {\n";
@@ -463,7 +480,7 @@ sub parse_command_line_into {
 
 	# Check the names of any -D flags
 	for my $k (keys %{$hrOptsOut->{DEFS}}) {
-		die("Invalid key name \"$k\"") if $k !~ DEFINE_NAME_RE;
+		die "Invalid key name \"$k\"" if $k !~ DEFINE_NAME_RE;
 	}
 
 	# Process other arguments.  TODO? support multiple input filenames?
