@@ -55,16 +55,21 @@ my @testcases=(
 		# For consistency, all :if tests evaluate to false if the
 		# named variable is not defined.
 
+	# Undefining
+	['-Dfoo','<?:undef foo?><?:if foo?>yes<?:else?>no<?:endif?>',qr/^no$/ ],
+
 	# Three forms of elsif
 	['', '<?:if foo eq "1" ?>yes<?:elif foo eq "x" ?>maybe<?:else?>no<?:endif?>', qr/^no$/],
 	['', '<?:if foo eq "1" ?>yes<?:elsif foo eq "x" ?>maybe<?:else?>no<?:endif?>', qr/^no$/],
 	['', '<?:if foo eq "1" ?>yes<?:elseif foo eq "x" ?>maybe<?:else?>no<?:endif?>', qr/^no$/],
 
+	# elsif with definitions
 	['-Dfoo', '<?:if foo eq "1" ?>yes<?:elsif foo eq "x" ?>maybe<?:else?>no<?:endif?>', qr/^yes$/],
 	['-Dfoo=1', '<?:if foo eq "1" ?>yes<?:elsif foo eq "x" ?>maybe<?:else?>no<?:endif?>', qr/^yes$/],
 		# Automatic conversion of numeric 1 to string in "eq" context
 	['-Dfoo=\\"x\\"', '<?= $D{foo} . "\n" ?><?:if foo eq "1" ?>yes<?:elsif foo eq "x" ?>maybe<?:else?>no<?:endif?>', qr/^x\nmaybe$/],
 	['-Dfoo=\\"y\\"', '<?:if foo eq "1" ?>yes<?:elsif foo eq "x" ?>maybe<?:else?>no<?:endif?>', qr/^no$/],
+
 ); #@testcases
 
 #plan tests => scalar @testcases;

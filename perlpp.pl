@@ -36,7 +36,7 @@ use constant DEFINE_NAME_RE	=>
 	# Valid names for -D.  TODO expand this to Unicode.
 	# Bare underscore isn't permitted because it's special in perl.
 use constant DEFINE_NAME_IN_CONTEXT_RE	=>
-	qr/^(?<nm>[[:alpha:]][[:alnum:]_]*|[[:alpha:]_][[:alnum:]_]+)\s*(?<rest>.*)$/i;
+	qr/^(?<nm>[[:alpha:]][[:alnum:]_]*|[[:alpha:]_][[:alnum:]_]+)\s*+(?<rest>.*+)$/i;
 	# A valid name followed by something else.  Used for :if and :elsif.
 
 # Modes - each output buffer has one
@@ -175,6 +175,11 @@ sub ExecuteCommand {
 
 	} elsif ( $cmd =~ /^prefix\s+(\S+)\s+(\S+)\s*$/i ) {
 		$Prefixes{ $1 } = $2;
+
+	} elsif ( $cmd =~ /^undef\s+(?<nm>\S+)\s*$/i ) {	# clear from %D
+		my $nm = $+{nm};		# Otherwise !~ clobbers it.
+		die("Invalid name \"$nm\" in ifdef") if $nm !~ DEFINE_NAME_RE;
+		print "\$D\{$nm\} = undef;\n";
 
 	} elsif ( $cmd =~ /^ifdef\s+(?<nm>\S+)\s*$/i ) {	# test in %D
 		my $nm = $+{nm};		# Otherwise !~ clobbers it.
