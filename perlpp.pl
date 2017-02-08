@@ -162,22 +162,22 @@ sub ExecuteCommand {
 	my $fn;
 	my $dir;
 
-	if ( $cmd =~ /^include\s+(?:['"](?<fn>[^'"]+)['"]|(?<fn>\S+))\s*$/i ) {
+	if ( $cmd =~ /^include\s++(?:['"](?<fn>[^'"]+)['"]|(?<fn>\S+))\s*$/i ) {
 		ProcessFile( $WorkingDir . "/" . $+{fn} );
 
-	} elsif ( $cmd =~ /^macro\s+(.*)$/si ) {
+	} elsif ( $cmd =~ /^macro\s++(.*+)$/si ) {
 		StartOB();									# plain text
 		eval( $1 ); warn $@ if $@;
 		print "print " . PrepareString( EndOB() ) . ";\n";
 
-	} elsif ( $cmd =~ /^immediate\s+(.*)$/si ) {
+	} elsif ( $cmd =~ /^immediate\s++(.*+)$/si ) {
 		eval( $1 ); warn $@ if $@;
 
-	} elsif ( $cmd =~ /^prefix\s+(\S+)\s+(\S+)\s*$/i ) {
+	} elsif ( $cmd =~ /^prefix\s++(\S++)\s++(\S++)\s*+$/i ) {
 		$Prefixes{ $1 } = $2;
 
 	# Definitions
-	} elsif ( $cmd =~ /^define\s+(.*)$/i ) {			# set in %D
+	} elsif ( $cmd =~ /^define\s++(.*+)$/i ) {			# set in %D
 		my $test = $1;	# Otherwise !~ clobbers it.
 		if( $test !~ DEFINE_NAME_IN_CONTEXT_RE ) {
 			die "Could not understand \"define\" command \"$test\"." .
@@ -192,18 +192,18 @@ sub ExecuteCommand {
 
 		print "\$D\{$nm\} = ($rest) ;\n";
 
-	} elsif ( $cmd =~ /^undef\s+(?<nm>\S+)\s*$/i ) {	# clear from %D
+	} elsif ( $cmd =~ /^undef\s++(?<nm>\S++)\s*+$/i ) {	# clear from %D
 		my $nm = $+{nm};
 		die "Invalid name \"$nm\" in \"undef\"" if $nm !~ DEFINE_NAME_RE;
 		print "\$D\{$nm\} = undef;\n";
 
 	# Conditionals
-	} elsif ( $cmd =~ /^ifdef\s+(?<nm>\S+)\s*$/i ) {	# test in %D
+	} elsif ( $cmd =~ /^ifdef\s++(?<nm>\S++)\s*+$/i ) {	# test in %D
 		my $nm = $+{nm};		# Otherwise !~ clobbers it.
 		die "Invalid name \"$nm\" in \"ifdef\"" if $nm !~ DEFINE_NAME_RE;
 		print "if(defined(\$D\{$nm\})) {\n";	# Don't need exists()
 
-	} elsif ( $cmd =~ /^if\s+(.*)$/i ) {	# :if - General test of %D values
+	} elsif ( $cmd =~ /^if\s++(.*+)$/i ) {	# :if - General test of %D values
 		my $test = $1;		# $1 =~ doesn't work for me
 		if( $test !~ DEFINE_NAME_IN_CONTEXT_RE ) {
 			die "Could not understand \"if\" command \"$test\"." .
@@ -213,7 +213,7 @@ sub ExecuteCommand {
 		print "if(exists($ref) && ( $ref $+{rest} ) ) {\n";
 			# Test exists() first so undef maps to false rather than warning.
 
-	} elsif ( $cmd =~ /^(elsif|elseif|elif)\s+(.*$)/ ) {	# :elsif with condition
+	} elsif ( $cmd =~ /^(elsif|elseif|elif)\s++(.*+)$/ ) {	# :elsif with condition
 		my $cmd = $1;
 		my $test = $2;
 		if( $test !~ DEFINE_NAME_IN_CONTEXT_RE ) {
@@ -224,10 +224,10 @@ sub ExecuteCommand {
 		print "} elsif(exists($ref) && ( $ref $+{rest} ) ) {\n";
 			# Test exists() first so undef maps to false rather than warning.
 
-	} elsif ( $cmd =~ /^else\s*$/i ) {
+	} elsif ( $cmd =~ /^else\s*+$/i ) {
 		print "} else {\n";
 
-	} elsif ( $cmd =~ /^endif\s*$/i ) {				# end of a block
+	} elsif ( $cmd =~ /^endif\s*+$/i ) {				# end of a block
 		print "}\n";
 
 	} else {
