@@ -32,7 +32,7 @@ use constant OPENING_RE		=> qr/^(.*?)\Q${\(TAG_OPEN)}\E(.*)$/s;	# /s states for 
 use constant CLOSING_RE		=> qr/^(.*?)\Q${\(TAG_CLOSE)}\E(.*)$/s;
 
 use constant DEFINE_NAME_RE	=>
-		 qr/^([[:alpha:]][[:alnum:]_]*|[[:alpha:]_][[:alnum:]_]+)$/i;
+	qr/^(?<nm>[[:alpha:]][[:alnum:]_]*|[[:alpha:]_][[:alnum:]_]+)$/i;
 	# Valid names for -D.  TODO expand this to Unicode.
 	# Bare underscore isn't permitted because it's special in perl.
 use constant DEFINE_NAME_IN_CONTEXT_RE	=>
@@ -53,12 +53,17 @@ use constant OB_MODE 		=> 0;	# each stack entry is a two-element array
 use constant OB_CONTENTS 	=> 1;
 
 # === Globals =============================================================
-my $Package = '';
-my @Preprocessors = ();
-my @Postprocessors = ();
+
+# Internals
+my $Package = '';			# package name for the generated script
 my $RootSTDOUT;
 my $WorkingDir = '.';
-my %Prefixes = ();
+
+# Vars accessible to, or used by or on behalf of, :macro / :immediate code
+my @Preprocessors = ();
+my @Postprocessors = ();
+my %Prefixes = ();			# set by ExecuteCommand; used by PrepareString
+my %Defs = ();				# Command-line -D arguments
 
 # Output-buffer stack
 my @OutputBuffers = ();		# each entry is a two-element array
@@ -480,7 +485,7 @@ sub parse_command_line_into {
 
 	# Check the names of any -D flags
 	for my $k (keys %{$hrOptsOut->{DEFS}}) {
-		die "Invalid key name \"$k\"" if $k !~ DEFINE_NAME_RE;
+		die "Invalid -D name \"$k\"" if $k !~ DEFINE_NAME_RE;
 	}
 
 	# Process other arguments.  TODO? support multiple input filenames?
@@ -493,6 +498,8 @@ sub Main {
 	my %opts;
 	parse_command_line_into \%opts;
 
+	# Preamble
+
 	$Package = $opts{INPUT_FILENAME};
 	$Package =~ s/^.*?([a-z_][a-z_0-9.]*).pl?$/$1/i;
 	$Package =~ s/[^a-z0-9_]/_/gi;
@@ -501,6 +508,8 @@ sub Main {
 	StartOB();
 	print "package PPP_${Package};\nuse 5.010;\nuse strict;\nuse warnings;\n";
 	print "use constant { true => !!1, false => !!0 };\n";
+
+	# Definitions
 
 	# Transfer parameters from the command line (-D) to the processed file.
 	# The parameters are in %D, by analogy with -D.
@@ -516,6 +525,13 @@ sub Main {
 	}
 	print ");\n";
 
+	# Save a copy for use at generation time
+	%Defs = map {	my $v = eval(${$opts{DEFS}}{$_});
+					warn "Could not evaluate -D \"$_\": $@" if $@;
+					$_ => $v
+				}
+			keys %{$opts{DEFS}};
+
 	# Initial code from the command line, if any
 	print $opts{EVAL}, "\n" if $opts{EVAL};
 
@@ -524,6 +540,7 @@ sub Main {
 
 	my $script = EndOB();							# The generated Perl script
 
+	# --- Run it ---
 	if ( $opts{DEBUG} ) {
 		print $script;
 	} else {
@@ -571,24 +588,11 @@ given on the command line.
 If you omit the B<< =value >>, the value will be the constant C<true>
 (see L</"The generated script">, below).
 
-Note: If your shell strips quotes, you may need to escape them: B<value> must
-be a valid Perl expression.  So, under bash, this works:
+This also saves the value, or C<undef>, in the generation-time
+hash C<< %Defs >>.  This can be used, e.g., to select include filenames
+depending on B<-D> arguments.
 
-	perlpp -D name=\"Hello, world!\"
-
-The backslashes (C<\"> instead of C<">) are required to prevent bash
-from removing the double-quotes.  Alternatively, this works:
-
-	perlpp -D 'name="Hello, World"'
-
-with the whole argument to B<-D> in single quotes.
-
-Also note that the space after B<-D> is optional, so
-
-	perlpp -Dfoo
-	perlpp -Dbar=42
-
-both work.
+See L</"Definitions">, below, for more information.
 
 =item -e, --eval B<statement>
 
@@ -613,6 +617,30 @@ Usage help, printed to STDOUT.
 Shows just the usage summary
 
 =back
+
+=head1 DEFINITIONS
+
+B<-D> items may be evaluated in any order --- do not rely on left-to-right
+evaluation in the order given on the command line.
+
+If your shell strips quotes, you may need to escape them: B<value> must
+be a valid Perl expression.  So, under bash, this works:
+
+	perlpp -D name=\"Hello, world!\"
+
+The backslashes (C<\"> instead of C<">) are required to prevent bash
+from removing the double-quotes.  Alternatively, this works:
+
+	perlpp -D 'name="Hello, World"'
+
+with the whole argument to B<-D> in single quotes.
+
+Also note that the space after B<-D> is optional, so
+
+	perlpp -Dfoo
+	perlpp -Dbar=42
+
+both work.
 
 =head1 THE GENERATED SCRIPT
 
