@@ -543,10 +543,18 @@ sub Main {
 	# --- Run it ---
 	if ( $opts{DEBUG} ) {
 		print $script;
+
 	} else {
 		StartOB();									# output of the Perl script
-		eval( $script ); warn $@ if $@;
-		OutputResult( \EndOB(), $opts{OUTPUT_FILENAME} );
+		my $result;		# save any errors from the eval
+		eval( $script ); $result=$@;
+
+		if($result) {	# Report errors to console and shell
+			print STDERR $result;
+			exit 1;
+		} else {		# Save successful output
+			OutputResult( \EndOB(), $opts{OUTPUT_FILENAME} );
+		}
 	}
 } #Main()
 
