@@ -292,14 +292,14 @@ sub OnOpening {
 sub OnClosing {
 	my $inside;
 	my $insetMode;
-	my $plainMode = OBMODE_PLAIN;
+	my $nextMode = OBMODE_PLAIN;
 
 	$insetMode = GetModeOfOB();
 	$inside = EndOB();								# contents of the inset
 	if ( $inside =~ /"$/ ) {
 		StartOB( $insetMode );						# restore contents of the inset
 		print substr( $inside, 0, -1 );
-		$plainMode = OBMODE_CAPTURE;
+		$nextMode = OBMODE_CAPTURE;
 	} else {
 		if ( $insetMode == OBMODE_ECHO ) {
 			print "print ${inside};\n";				# don't wrap in (), trailing semicolon
@@ -307,16 +307,18 @@ sub OnClosing {
 			ExecuteCommand( $inside );
 		} elsif ( $insetMode == OBMODE_COMMENT ) {
 			# Ignore the contents - no operation
+		} elsif ( $insetMode == OBMODE_CODE ) {
+			print "$inside\n";	# \n so you can put comments in your perl code
 		} else {
 			print $inside;
 		}
 
 		if ( GetModeOfOB() == OBMODE_CAPTURE ) {		# if the inset is wrapped
 			print EndOB() . " PerlPP::EndOB(); } . ";	# end of do { .... } statement
-			$plainMode = OBMODE_CAPTURE;				# back to capturing
+			$nextMode = OBMODE_CAPTURE;				# back to capturing
 		}
 	}
-	StartOB( $plainMode );							# plain text
+	StartOB( $nextMode );							# plain text
 } #OnClosing()
 
 sub RunPerlPP {
