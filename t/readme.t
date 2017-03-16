@@ -11,9 +11,7 @@ my ($in, $out, $err);
 my @testcases=(		# In the order they are given in README.md
 	# [$in, $out, $err (if any)]
 	['<?x this tag is passed as is ?> because "x" is not a valid mode',
-		'<?x this tag is passed as is ?> because "x" is not a valid mode'."\n"],
-			# TODO the extra \n appears to be because of
-			# return ( 0, $after . "\n" ); in perlpp.  Should this be present?
+		'<?x this tag is passed as is ?> because "x" is not a valid mode'],
 	[ 	<<'SCRIPT',
 Hello <? print "world"; ?> (again).
 <?# I don't appear in the output ?>but I do.

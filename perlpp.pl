@@ -20,11 +20,14 @@
 # http://darkness.codefu.org/wordpress/2003/03/perl-scoping/
 
 package PerlPP;
-our $VERSION = '0.1.0';
+our $VERSION = '0.2.0';
 
 use v5.10;
 use strict;
 use warnings;
+
+use constant true			=> 1;
+use constant false			=> 0;
 
 use constant TAG_OPEN		=> '<' . '?';	# literal < ? and ? > shouldn't
 use constant TAG_CLOSE		=> '?' . '>';	# appear in this file
@@ -163,13 +166,16 @@ sub ExecuteCommand {
 } #ExecuteCommand()
 
 sub OnOpening {
+	# takes the rest of the string, beginning right after the ? of the tag_open
+	# returns (withinTag, string still to be processed)
+
 	my $after = shift;
 	my $plain;
 	my $plainMode;
 	my $insetMode = OBMODE_CODE;
 
 	$plainMode = GetModeOfOB();
-	$plain = EndOB();								# plain text
+	$plain = EndOB();						# plain text already seen
 	if ( $after =~ /^"/ && $plainMode == OBMODE_CAPTURE ) {
 		print PrepareString( $plain );
 		# we are still buffering the inset contents,
@@ -182,7 +188,7 @@ sub OnOpening {
 		} elsif ( $after =~ /^#/ ) {
 			$insetMode = OBMODE_COMMENT;
 		} elsif ( $after =~ m{^\/} ) {
-			$plain .= "\n";
+			$plain .= "\n";		# newline after what we've already seen
 			# OBMODE_CODE
 		} elsif ( $after =~ /^(?:\s|$)/ ) {
 			# OBMODE_CODE
@@ -191,7 +197,9 @@ sub OnOpening {
 		} else {
 			StartOB( $plainMode );					# skip non-PerlPP insets
 			print $plain . TAG_OPEN;
-			return ( 0, $after . "\n" );
+			return ( false, $after );
+				# Here $after is the entire rest of the input, so it is as if
+				# the TAG_OPEN had never occurred.
 		}
 
 		if ( $plainMode == OBMODE_CAPTURE ) {
@@ -202,8 +210,8 @@ sub OnOpening {
 		}
 		StartOB( $insetMode );						# contents of the inset
 	}
-	return ( 1, "" ) unless $after;
-	return ( 1, substr( $after, 1 ) );
+	return ( true, "" ) unless $after;
+	return ( true, substr( $after, 1 ) );
 } #OnOpening()
 
 sub OnClosing {
@@ -224,7 +232,7 @@ sub OnClosing {
 			ExecuteCommand( $inside );
 		} elsif ( $insetMode == OBMODE_COMMENT ) {
 			# Ignore the contents - no operation
-		} else {	# e.g., OBMODE_CODE
+		} else {
 			print $inside;
 		}
 
@@ -238,7 +246,7 @@ sub OnClosing {
 
 sub RunPerlPP {
 	my $contents_ref = shift;						# reference
-	my $withinTag = 0;
+	my $withinTag = false;
 	my $lastPrep;
 
 	$lastPrep = $#Preprocessors;
@@ -257,10 +265,10 @@ sub RunPerlPP {
 				$lastPrep++;
 				&{$Preprocessors[ $lastPrep ]}( $contents_ref );
 			}
-			$withinTag = 0;
+			$withinTag = false;
 			goto OPENING;
 		};
-	} else {
+	} else {	# look for the next opening tag.  $1 is before; $2 is after.
 		if ( $$contents_ref =~ OPENING_RE ) {
 			print $1;
 			( $withinTag, $$contents_ref ) = OnOpening( $2 );
