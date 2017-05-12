@@ -8,6 +8,9 @@ No external modules are required, just a single file.
 	Usage: perl perlpp.pl [options] [filename]
 	Options:
 		-o, --output filename    Output to the file instead of STDOUT.
+		-s, --set name=value	 Set $S{name}=value in the generated code.
+					 The hash %S always exists, but is empty
+					 if you haven't specified any -s options.
 		-e, --eval expression    Evaluate the expression(s) before any Perl code.
 		-d, --debug              Don't evaluate Perl code, just write it to STDERR.
 		-h, --help               Usage help.
@@ -124,7 +127,7 @@ the perl code produces will be included verbatim in the script output.
 This can be used to dynamically select which files you want to include,
 using
 
-	<?:macro Include "whatever_filename"; ?>
+	<?:macro my $fn="some_name"; Include $fn; ?>
 
 Capturing
 ---------

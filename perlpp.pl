@@ -434,13 +434,20 @@ sub Main {
 	StartOB();
 	print "package PPP_${Package};\nuse strict;\nuse warnings;\n";
 
-	# TODO transfer parameters from the command line to the processed file.
-	# Per commit 7bbe05c, %DEF is for those parameters.
-	print "my %DEF = ();\n";
+	# Transfer parameters from the command line (-s) to the processed file.
+	# The parameters are in %S, by analogy with -s.
+	print "my %S = (\n";
+	for my $defname (keys %{$opts{DEFS}}) {
+		print "    $defname => ", ${$opts{DEFS}}{$defname}, ",\n";
+	}
+	print ");\n";
 
+	# Initial code from the command line, if any
 	print $opts{EVAL}, "\n" if $opts{EVAL};
 
+	# The input file
 	ProcessFile( $opts{INPUT_FILENAME} );
+
 	my $script = EndOB();							# The generated Perl script
 
 	if ( $opts{DEBUG} ) {
@@ -479,6 +486,24 @@ If no [filename] is given, input will be read from stdin.
 
 Output to B<filename> instead of STDOUT.
 
+=item -s, --set B<name>=B<value>
+
+In the generated script, set C<< $S{B<name>} >> to B<value>.
+The hash C<%S> always exists, but is empty if no B<-s> options are
+given on the command line.
+
+Note: If your shell strips quotes, you may need to escape them.  B<value> must
+be a valid Perl expression.  So, under bash, this works:
+
+    perlpp -s name=\"Hello, world!\"
+
+The backslashes (C<\"> instead of C<">) are required to prevent bash
+from removing the double-quotes.  Alternatively, this works:
+
+    perlpp -s 'name="Hello, World"'
+
+with the whole argument to B<-s> in single quotes.
+
 =item -e, --eval B<statement>
 
 Evaluate the B<statement> before any other Perl code in the generated
@@ -491,6 +516,14 @@ Don't evaluate Perl code, just write the generated code to STDOUT.
 =item -h, --help
 
 Usage help.
+
+=item --man
+
+Full documentation
+
+=item -?, --usage
+
+Shows just the usage summary
 
 =back
 
