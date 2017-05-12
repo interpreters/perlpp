@@ -2,7 +2,7 @@
 # Testing perlpp with invalid input
 use strict;
 use warnings;
-use Test::More 'no_plan';
+use Test::More;
 use IPC::Run3;
 use constant CMD => 'perl perlpp.pl';
 
@@ -17,6 +17,8 @@ my @testcases=(
 		'?>#define QUUX (<?= $foo/40 ?>)', qr/syntax error/],
 	['<? o@no!!! ?>'],
 ); #@testcases
+
+plan tests => scalar @testcases;
 
 for my $lrTest (@testcases) {
 	my ($testin, $err_re) = @$lrTest;

@@ -2,7 +2,7 @@
 # Tests of perlpp command-line options
 use strict;
 use warnings;
-use Test::More 'no_plan';
+use Test::More;
 use IPC::Run3;
 use constant CMD => 'perl perlpp.pl';
 
@@ -19,6 +19,8 @@ my @testcases=(
 	['-d -e \'my $foo=42;\'','<?= $foo ?>', qr/^my \$foo=42;/m],
 	['--debug --eval \'my $foo=42;\'','<?= $foo ?>', qr/^print\s+\$foo\s*;/m],
 ); #@testcases
+
+plan tests => scalar @testcases;
 
 for my $lrTest (@testcases) {
 	my ($opts, $testin, $out_re, $err_re) = @$lrTest;

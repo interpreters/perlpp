@@ -2,7 +2,7 @@
 # Tests from perlpp's README.md
 use strict;
 use warnings;
-use Test::More 'no_plan';
+use Test::More;
 use IPC::Run3;
 use constant CMD => 'perl perlpp.pl';
 
@@ -85,6 +85,8 @@ RESULT
 		# the blank line before "abcd..." is the \n after the first `?>`
 
 ); #@testcases
+
+plan tests => scalar @testcases;
 
 for my $lrTest (@testcases) {
 	my ($testin, $refout, $referr) = @$lrTest;

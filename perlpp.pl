@@ -15,8 +15,10 @@ use Getopt::Long;
 use Pod::Usage;
 
 # === Constants ===========================================================
-use constant true			=> 1;
-use constant false			=> 0;
+use constant true			=> !!1;
+use constant false			=> !!0;
+
+use constant DEBUG			=> false;
 
 # Shell exit codes
 use constant EXIT_OK 		=> 0;	# success
@@ -53,6 +55,9 @@ my %Prefixes = ();
 # Output-buffer stack
 my @OutputBuffers = ();		# each entry is a two-element array
 
+# Debugging info
+my @OBModeNames = qw(plain capture code echo command comment);
+
 # === Code ================================================================
 
 sub AddPreprocessor {
@@ -76,6 +81,9 @@ sub StartOB {
 	close( STDOUT );			# must be closed before redirecting it to a variable
 	open( STDOUT, ">>", \$OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ] ) or die $!;
 	$| = 1;						# do not use output buffering
+
+	printf STDERR "Opened %s buffer %d\n", $OBModeNames[$mode],
+		scalar @OutputBuffers if DEBUG;
 } #StartOB()
 
 sub EndOB {
@@ -90,16 +98,25 @@ sub EndOB {
 		open( STDOUT, ">>", \$OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ] )
 			or die $!;
 	}
+
+	if(DEBUG) {
+		printf STDERR "Closed %s buffer %d, contents '%s%s'\n",
+			$OBModeNames[$ob->[ OB_MODE ]],
+			1+@OutputBuffers,
+			substr($ob->[ OB_CONTENTS ], 0, 40),
+			length($ob->[ OB_CONTENTS ])>40 ? '...' : '';
+	}
+
 	return $ob->[ OB_CONTENTS ];
 } #EndOB
 
-sub ReadOB {
+sub ReadAndEmptyOB {
 	my $s;
 
 	$s = $OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ];
 	$OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ] = "";
 	return $s;
-} #ReadOB()
+} #ReadAndEmptyOB()
 
 sub GetModeOfOB {
 	return $OutputBuffers[ OB_TOP ]->[ OB_MODE ];
@@ -144,6 +161,9 @@ sub ExecuteCommand {
 		StartOB();									# plain text
 		eval( $1 ); warn $@ if $@;
 		print "print " . PrepareString( EndOB() ) . ";\n";
+
+	} elsif ( $cmd =~ /^immediate\s+(.*)$/si ) {
+		eval( $1 ); warn $@ if $@;
 
 	} elsif ( $cmd =~ /^prefix\s+(\S+)\s+(\S+)\s*$/i ) {
 		$Prefixes{ $1 } = $2;
@@ -312,6 +332,13 @@ sub ProcessFile {
 		$WorkingDir = $wdir;
 	}
 } #ProcessFile()
+
+sub Include {	# As ProcessFile(), but for use within :macro
+	print "print " . PrepareString( EndOB() ) . ";\n";
+		# Close the OB opened by :macro
+	ProcessFile(shift);
+	StartOB();		# re-open a plain-text OB
+} #Include
 
 sub OutputResult {
 	my $contents_ref = shift;					# reference

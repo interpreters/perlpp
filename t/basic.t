@@ -2,7 +2,7 @@
 # Some basic tests for perlpp
 use strict;
 use warnings;
-use Test::More 'no_plan';
+use Test::More;
 use IPC::Run3;
 use constant CMD => 'perl perlpp.pl';
 
@@ -18,7 +18,11 @@ my @testcases=(
 	['<?# This output file is tremendously boring. ?>',''],
 	['<?#ditto?>',''],
 	['<? my $foo=80; ?>#define QUUX (<?= $foo/40 ?>)', '#define QUUX (2)'],
+	['<? print (map { $_ . $_ . "\n" } qw(a b c d)); ?>',"aa\nbb\ncc\ndd\n"],
+	['<?:macro print (map { $_ . $_ . "\n" } qw(a b c d)); ?>',"aa\nbb\ncc\ndd\n"],
 ); #@testcases
+
+plan tests => scalar @testcases;
 
 for my $lrTest (@testcases) {
 	my ($testin, $refout, $referr) = @$lrTest;
