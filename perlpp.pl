@@ -1,20 +1,5 @@
 #!/usr/bin/env perl
-
-=pod
-	PerlPP: Perl preprocessor
-	https://github.com/d-ash/perlpp
-	distributed under MIT license
-	by Andrey Shubin <andrey.shubin@gmail.com>
-
-	Usage: perl perlpp.pl [options] [filename]
-	Options:
-		-o, --output filename       Output to the file instead of STDOUT.
-		-e, --eval expression       Evaluate the expression(s) before any Perl code.
-		-d, --debug                 Don't evaluate Perl code, just write the generated code to STDOUT.
-		-h, --help                  Usage help.
-
-	If no [filename] is given, input will be read from stdin.
-=cut
+# PerlPP: Perl preprocessor.  See documentation after __END__.
 
 # Some info about scoping in Perl:
 # http://darkness.codefu.org/wordpress/2003/03/perl-scoping/
@@ -22,15 +7,25 @@
 package PerlPP;
 our $VERSION = '0.2.0';
 
-use v5.10;
+use v5.10;		# provides // - http://perldoc.perl.org/perl5100delta.html
 use strict;
 use warnings;
 
+use Getopt::Long;
+use Pod::Usage;
+
+# === Constants ===========================================================
 use constant true			=> 1;
 use constant false			=> 0;
 
+# Shell exit codes
+use constant EXIT_OK 		=> 0;	# success
+use constant EXIT_PROC_ERR 	=> 1;	# error during processing
+use constant EXIT_PARAM_ERR	=> 2;	# couldn't understand the command line
+
+# Constants for the parser
 use constant TAG_OPEN		=> '<' . '?';	# literal < ? and ? > shouldn't
-use constant TAG_CLOSE		=> '?' . '>';	# appear in this file
+use constant TAG_CLOSE		=> '?' . '>';	# appear in this file.
 use constant OPENING_RE		=> qr/^(.*?)\Q${\(TAG_OPEN)}\E(.*)$/s;	# /s states for single-line mode
 use constant CLOSING_RE		=> qr/^(.*?)\Q${\(TAG_CLOSE)}\E(.*)$/s;
 
@@ -42,6 +37,12 @@ use constant OBMODE_ECHO	=> 3;
 use constant OBMODE_COMMAND	=> 4;
 use constant OBMODE_COMMENT	=> 5;
 
+# Layout of the output-buffer stack.
+use constant OB_TOP 		=> 0;	# top of the stack is [0]: use [un]shift
+use constant OB_MODE 		=> 0;	# each stack entry is a two-element array
+use constant OB_CONTENTS 	=> 1;
+
+# === Globals =============================================================
 my $Package = '';
 my @Preprocessors = ();
 my @Postprocessors = ();
@@ -50,22 +51,9 @@ my $WorkingDir = '.';
 my %Prefixes = ();
 
 # Output-buffer stack
-use constant OB_TOP => 0;	# top of the stack is in elem. 0 - shift pops
-my @OutputBuffers = ();		# each entry is a two-element list
-use constant OB_MODE => 0;
-use constant OB_CONTENTS => 1;
+my @OutputBuffers = ();		# each entry is a two-element array
 
-sub PrintHelp {		# print to STDOUT since the user requested the help
-	print <<USAGE
-Usage: perl perlpp.pl [options] [filename]
-Options:
-	-o, --output filename    Output to the file instead of STDOUT.
-	-e, --eval expression    Evaluate the expression(s) before any Perl code.
-	-d, --debug              Don't evaluate Perl code, just write it to STDERR.
-	-h, --help               Usage help.
-USAGE
-	;
-}
+# === Code ================================================================
 
 sub AddPreprocessor {
 	push( @Preprocessors, shift );
@@ -291,7 +279,7 @@ sub RunPerlPP {
 } #RunPerlPP()
 
 sub ProcessFile {
-	my $fname = shift;
+	my $fname = shift;	# "" or other false value => STDIN
 	my $wdir = "";
 	my $contents;		# real string of $fname's contents
 	my $proc;
@@ -327,7 +315,7 @@ sub ProcessFile {
 
 sub OutputResult {
 	my $contents_ref = shift;					# reference
-	my $fname = shift;
+	my $fname = shift;	# "" or other false value => STDOUT
 	my $proc;
 	my $f;
 
@@ -344,52 +332,149 @@ sub OutputResult {
 	close( $f ) or die $!;
 } #OutputResult()
 
-sub Main {
-	my $argEval = "";
-	my $argDebug = 0;
-	my $inputFilename = "";
-	my $outputFilename = "";
-	my $script;
+# === Command line ========================================================
 
-	while ( my $a = shift ) {
-		if ( $a =~ /^(?:-h|--help)$/ ) {
-			PrintHelp();
-			exit;
-		} elsif ( $a =~ /^(?:-e|--eval)$/ ) {
-			$argEval .= shift or die "No eval expression is specified";
-			$argEval .= "\n";
-		} elsif ( $a =~ /^(?:-o|--output)$/ ) {
-			$outputFilename = shift or die "No output file is specified";
-		} elsif ( $a =~ /^(?:-d|--debug)$/ ) {
-			$argDebug = 1;
-		} else {
-			$inputFilename = $a;
-		}
-		# TODO get options to be passed to the script as part of %DEF
+my %CMDLINE_OPTS = (
+	# hash from internal name to array reference of j
+	# [getopt-name, getopt-options, optional default-value]
+	# They are listed in alphabetical order by option name,
+	# lowercase before upper, although the code does not require that order.
+
+	EVAL => ['e','|eval=s', ""],
+	DEBUG => ['d','|debug', false],
+	# -h and --help reserved
+	# --man reserved
+	# INPUT_FILENAME assigned by parse_command_line_into
+	OUTPUT_FILENAME => ['o','|output=s', ""],
+	DEFS => ['s','|set=s%'],
+	# --usage reserved
+	# -? reserved
+);
+
+sub parse_command_line_into {
+	# Takes reference to hash to populate.  Fills in that hash with the
+	# values from the command line, keyed by the keys in %CMDLINE_OPTS.
+
+	my $hrOptsOut = shift;
+
+	# Easier syntax for checking whether optional args were provided.
+	# Syntax thanks to http://www.perlmonks.org/?node_id=696592
+	local *have = sub { return exists($hrOptsOut->{ $_[0] }); };
+
+	Getopt::Long::Configure 'gnu_getopt';
+
+	# Set defaults so we don't have to test them with exists().
+	%$hrOptsOut = (		# map getopt option name to default value
+		map { $CMDLINE_OPTS{ $_ }->[0] => $CMDLINE_OPTS{ $_ }[2] }
+		grep { (scalar @{$CMDLINE_OPTS{ $_ }})==3 }
+		keys %CMDLINE_OPTS
+	);
+
+	# Get options
+	GetOptions($hrOptsOut,  # destination hash
+		'usage|?', 'h|help', 'man',
+		map { $_->[0] . $_->[1] } values %CMDLINE_OPTS,	# options strs
+		)
+	or pod2usage(-verbose => 0, -exitval => EXIT_PARAM_ERR);	# unknown opt
+
+	# Help, if requested
+	pod2usage(-verbose => 0, -exitval => EXIT_PROC_ERR) if have('usage');
+	pod2usage(-verbose => 1, -exitval => EXIT_PROC_ERR) if have('h');
+	pod2usage(-verbose => 2, -exitval => EXIT_PROC_ERR) if have('man');
+
+	# Map the option names from GetOptions back to the internal names we use,
+	# e.g., $hrOptsOut->{EVAL} from $hrOptsOut->{e}.
+	my %revmap = map {  $CMDLINE_OPTS{$_}->[0] => $_ } keys %CMDLINE_OPTS;
+	for my $optname (keys %$hrOptsOut) {
+		$hrOptsOut->{ $revmap{$optname} } = $hrOptsOut->{ $optname };
 	}
 
-	$Package = $inputFilename;
+	# Process other arguments.  TODO? support multiple input filenames?
+	$hrOptsOut->{INPUT_FILENAME} = $ARGV[0] // "";
+
+} #parse_command_line_into()
+
+# === Main ================================================================
+sub Main {
+	my %opts;
+	parse_command_line_into \%opts;
+
+	$Package = $opts{INPUT_FILENAME};
 	$Package =~ s/^([a-zA-Z_][a-zA-Z_0-9.]*).p$/$1/;
 	$Package =~ s/[^a-z0-9]/_/gi;
 		# $Package is not the whole name, so can start with a number.
 
 	StartOB();
-	print "package PPP_${Package};\nuse strict;\nuse warnings;\nmy %DEF = ();\n${argEval}\n";
+	print "package PPP_${Package};\nuse strict;\nuse warnings;\n";
+
 	# TODO transfer parameters from the command line to the processed file.
 	# Per commit 7bbe05c, %DEF is for those parameters.
-	ProcessFile( $inputFilename );
-	$script = EndOB();								# The generated Perl script
+	print "my %DEF = ();\n";
 
-	if ( $argDebug ) {
+	print $opts{EVAL}, "\n" if $opts{EVAL};
+
+	ProcessFile( $opts{INPUT_FILENAME} );
+	my $script = EndOB();							# The generated Perl script
+
+	if ( $opts{DEBUG} ) {
 		print $script;
 	} else {
 		StartOB();									# output of the Perl script
 		eval( $script ); warn $@ if $@;
-		OutputResult( \EndOB(), $outputFilename );
+		OutputResult( \EndOB(), $opts{OUTPUT_FILENAME} );
 	}
 } #Main()
 
 Main( @ARGV );
+
+__END__
+# ### Documentation #######################################################
+
+=pod
+
+=encoding UTF-8
+
+=head1 NAME
+
+PerlPP: Perl preprocessor
+
+=head1 USAGE
+
+perl perlpp.pl [options] [filename]
+
+If no [filename] is given, input will be read from stdin.
+
+=head1 OPTIONS
+
+=over
+
+=item -o, --output B<filename>
+
+Output to B<filename> instead of STDOUT.
+
+=item -e, --eval B<statement>
+
+Evaluate the B<statement> before any other Perl code in the generated
+script.
+
+=item -d, --debug
+
+Don't evaluate Perl code, just write the generated code to STDOUT.
+
+=item -h, --help
+
+Usage help.
+
+=back
+
+=head1 COPYRIGHT
+
+Code at L<https://github.com/d-ash/perlpp>.
+Distributed under MIT license.
+By Andrey Shubin (L<andrey.shubin@gmail.com>); additional contributions by
+Chris White (cxw42 at Github).
+
+=cut
 
 # vi: set ts=4 sts=0 sw=4 noet ai: #
 
