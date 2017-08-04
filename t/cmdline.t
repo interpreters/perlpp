@@ -33,6 +33,10 @@ my @testcases=(
 	['-D_x', '<? print "yes" if $D{_x}; ?>',qr/^yes$/],
 	['-D_1', '<? print "yes" if $D{_1}; ?>',qr/^yes$/],
 
+	# Definitions with --define
+	['--define foo', '<? print "yes" if $D{foo}; ?>',qr/^yes$/],
+	['--define foo=42 --define bar=127', '<?= $D{foo} * $D{bar} ?>',qr/^5334$/],
+
 	# Definitions: :define/:undef
 	['','<?:define foo?><?:ifdef foo?>yes<?:else?>no<?:endif?>',qr/^yes$/],
 	['','<?:define foo 42?><?:ifdef foo?>yes<?:else?>no<?:endif?>',qr/^yes$/],
@@ -49,6 +53,13 @@ my @testcases=(
 	['-D foo=42 -D bar=127', '<?= $D{foo} * $D{bar} ?>',qr/^5334$/],
 	['', '<? $D{x}="%D always exists even if empty"; ?><?= $D{x} ?>',
 		qr/^%D always exists even if empty$/],
+
+	# Textual substitution
+	['-Dfoo=42','<? my $foo; ?>foo',qr/^42$/ ],
+	['-Dfoo=\'"a phrase"\'','<? my $foo; ?>foo',qr/^a phrase$/ ],
+	['-Dfoo=\"bar\"','_foo foo foobar barfoo',qr/^_foo bar foobar barfoo$/ ],
+	['-Dfoo=\"bar\" --define barfoo','_foo foo foobar barfoo',
+		qr/^_foo bar foobar barfoo$/ ],
 
 	# Conditionals
 	['-Dfoo=42','<?:if foo==2?>yes<?:else?>no<?:endif?>',qr/^no$/ ],

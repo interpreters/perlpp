@@ -5,7 +5,7 @@
 # http://darkness.codefu.org/wordpress/2003/03/perl-scoping/
 
 package PerlPP;
-our $VERSION = '0.2.0';
+our $VERSION = '0.3.0-alpha';
 
 use v5.10;		# provides // - http://perldoc.perl.org/perl5100delta.html
 use strict;
@@ -63,7 +63,11 @@ my $WorkingDir = '.';
 my @Preprocessors = ();
 my @Postprocessors = ();
 my %Prefixes = ();			# set by ExecuteCommand; used by PrepareString
+
+# -D definitions.  -Dfoo creates $Defs{foo}==true and $Defs_repl_text{foo}==''.
 my %Defs = ();				# Command-line -D arguments
+my $Defs_RE = false;		# Regex that matches any -D name
+my %Defs_repl_text = ();	# Replacement text for -D names
 
 # Output-buffer stack
 my @OutputBuffers = ();		# each entry is a two-element array
@@ -156,9 +160,16 @@ sub PrepareString {
 	my $s = shift;
 	my $pref;
 
+	# Replace -D options.  Do this before prefixes so that we don't create
+	# prefix matches.  TODO? combine the defs and prefixes into one RE?
+	$s =~ s/$Defs_RE/$Defs_repl_text{$1}/g if $Defs_RE;
+
+	# Replace prefixes
 	foreach $pref ( keys %Prefixes ) {
 		$s =~ s/(^|\W)\Q$pref\E/$1$Prefixes{ $pref }/g;
 	}
+
+	# Quote it for printing
 	return QuoteString( $s );
 }
 
@@ -513,8 +524,9 @@ sub Main {
 
 	# Definitions
 
-	# Transfer parameters from the command line (-D) to the processed file.
-	# The parameters are in %D, by analogy with -D.
+	# Transfer parameters from the command line (-D) to the processed file,
+	# as textual representations of expressions.
+	# The parameters are in %D at runtime, by analogy with -S and %S.
 	print "my %D = (\n";
 	for my $defname (keys %{$opts{DEFS}}) {
 		my $val = ${$opts{DEFS}}{$defname} // 'true';
@@ -530,9 +542,26 @@ sub Main {
 	# Save a copy for use at generation time
 	%Defs = map {	my $v = eval(${$opts{DEFS}}{$_});
 					warn "Could not evaluate -D \"$_\": $@" if $@;
-					$_ => $v
+					$_ => ($v // true)
 				}
 			keys %{$opts{DEFS}};
+
+	# Set up regex for text substitution of Defs.
+	# Modified from http://www.perlmonks.org/?node_id=989740 by
+	# AnomalousMonk, http://www.perlmonks.org/?node_id=634253
+	if(%{$opts{DEFS}}) {
+		my $rx_search =
+			'\b(' . (join '|', map quotemeta, keys %{$opts{DEFS}}) . ')\b';
+		$Defs_RE = qr{$rx_search};
+
+		# Save the replacement values.  If a value cannot be evaluated,
+		# use the name so the replacement will not change the text.
+		%Defs_repl_text =
+			map {	my $v = eval(${$opts{DEFS}}{$_});
+					($@ || !defined($v)) ? ($_ => $_) : ($_ => ('' . $v))
+				}
+			keys %{$opts{DEFS}};
+	}
 
 	# Initial code from the command line, if any
 	print $opts{EVAL}, "\n" if $opts{EVAL};
@@ -549,6 +578,9 @@ sub Main {
 	} else {
 		StartOB();									# output of the Perl script
 		my $result;		# save any errors from the eval
+
+		# TODO hide %Defs and others of our variables we don't want
+		# $script to access.
 		eval( $script ); $result=$@;
 
 		if($result) {	# Report errors to console and shell
@@ -680,5 +712,5 @@ Chris White (cxw42 at Github).
 
 =cut
 
-# vi: set ts=4 sts=0 sw=4 noet ai: #
+# vi: set ts=4 sts=0 sw=4 noet ai fo-=o: #
 
