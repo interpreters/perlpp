@@ -61,6 +61,10 @@ my @testcases=(
 	['-Dfoo=\"bar\" --define barfoo','_foo foo foobar barfoo',
 		qr/^_foo bar foobar barfoo$/ ],
 
+	# Sets, which do not textually substitute
+	['-sfoo=42','<? my $foo; ?>foo',qr/^foo$/ ],
+	['-sfoo=42','<? my $foo; ?><?= $S{foo} ?>',qr/^42$/ ],
+
 	# Conditionals
 	['-Dfoo=42','<?:if foo==2?>yes<?:else?>no<?:endif?>',qr/^no$/ ],
 	['-Dfoo=2','<?:if foo==2?>yes<?:else?>no<?:endif?>',qr/^yes$/ ],

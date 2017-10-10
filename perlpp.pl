@@ -453,7 +453,8 @@ my %CMDLINE_OPTS = (
 	# --man reserved
 	# INPUT_FILENAME assigned by parse_command_line_into
 	OUTPUT_FILENAME => ['o','|output=s', ""],
-	DEFS => ['D','|define:s%'],
+	DEFS => ['D','|define:s%'],		# In %D, and text substitution
+	SETS => ['s','|set:s%'],		# Extra data in %S, without text substitution
 	# --usage reserved
 	# -? reserved
 );
@@ -526,7 +527,7 @@ sub Main {
 
 	# Transfer parameters from the command line (-D) to the processed file,
 	# as textual representations of expressions.
-	# The parameters are in %D at runtime, by analogy with -S and %S.
+	# The parameters are in %D at runtime.
 	print "my %D = (\n";
 	for my $defname (keys %{$opts{DEFS}}) {
 		my $val = ${$opts{DEFS}}{$defname} // 'true';
@@ -562,6 +563,20 @@ sub Main {
 				}
 			keys %{$opts{DEFS}};
 	}
+
+	# Now do SETS: -s or --set, into %S by analogy with -D and %D.
+	print "my %S = (\n";
+	for my $defname (keys %{$opts{SETS}}) {
+		my $val = ${$opts{SETS}}{$defname};
+		if(!defined($val)) {
+		}
+		$val = 'true' if $val eq '';
+			# "-s foo" (without a value) sets it to _true_ so
+			# "if($S{foo})" will work.  Getopt::Long gives us '' as the
+			# value in that situation.
+		print "    $defname => $val,\n";
+	}
+	print ");\n";
 
 	# Initial code from the command line, if any
 	print $opts{EVAL}, "\n" if $opts{EVAL};
