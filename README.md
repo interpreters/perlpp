@@ -16,11 +16,20 @@ Usage
 	Usage: perl perlpp.pl [options] [filename]
 	Options:
 		-o, --output filename	Output to the file instead of STDOUT.
-		-D, --define name=value	Set $D{name}=value in the generated code.
-					The hash %D always exists, but is empty
-					if you haven't specified any -D options.
-		-e, --eval statement	Evaluate the statement(s) before any Perl code.
-		-E, --debug		Don't evaluate Perl code, just write it to STDERR.
+		-D, --define name=value	Set $D{name}=value in the generated
+					code.  The hash %D always exists, but
+					is empty if you haven't specified any
+					-D options.
+					Also substitutes _name_ with _value_
+					in the output file.
+					_value_ is optional and defaults to
+					true.
+		-e, --eval statement	Evaluate the statement(s) before any
+					Perl code of the input files.
+		-E, --debug		Don't evaluate Perl code, just write
+					it to STDERR.
+		-s, --set name=value	As -D, but gneerates into %S and does
+					not substitute in the text body.
 		-h, --help		Usage help.
 
 In a **-D** command, the `value` must be a valid Perl value, e.g., `"foo"`
@@ -281,4 +290,10 @@ and create corresponding *~/.vim/after/syntax/FILETYPE.vim*
 	syntax region PerlPP start='<?' end='?>' containedin=ALL
 
 FILETYPE can be determined with `:set ft?`
+
+## Copyright
+
+Distributed under the MIT license --- see
+[LICENSE.txt](LICENSE.txt) for details.
+By Andrey Shubin (d-ash at Github) and Chris White (cxw42 at Github).
 

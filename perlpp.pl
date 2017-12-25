@@ -69,6 +69,9 @@ my %Defs = ();				# Command-line -D arguments
 my $Defs_RE = false;		# Regex that matches any -D name
 my %Defs_repl_text = ();	# Replacement text for -D names
 
+# -s definitions.
+my %Sets = ();				# Command-line -s arguments
+
 # Output-buffer stack
 my @OutputBuffers = ();		# each entry is a two-element array
 
@@ -565,6 +568,15 @@ sub Main {
 	}
 
 	# Now do SETS: -s or --set, into %S by analogy with -D and %D.
+
+	# Save a copy for use at generation time
+	%Sets = map {	my $v = eval(${$opts{SETS}}{$_});
+					warn "Could not evaluate -s \"$_\": $@" if $@;
+					$_ => ($v // true)
+				}
+			keys %{$opts{SETS}};
+
+	# Make the copy for runtime
 	print "my %S = (\n";
 	for my $defname (keys %{$opts{SETS}}) {
 		my $val = ${$opts{SETS}}{$defname};
@@ -636,14 +648,18 @@ Run C<perlpp --help> for a quick reference, or C<perlpp --man> for full docs.
 
 Output to B<filename> instead of STDOUT.
 
-=item -D, --define B<name>=B<value>
+=item -D, --define B<name>[=B<value>]
 
 In the generated script, set C<< $D{B<name>} >> to B<value>.
 The hash C<%D> always exists, but is empty if no B<-D> options are
 given on the command line.
 
+The B<name> will also be replaced with the B<value> in the text of the file.
+If B<value> cannot be evaluated, no substitution is made for B<name>.
+
 If you omit the B<< =value >>, the value will be the constant C<true>
-(see L</"The generated script">, below).
+(see L</"The generated script">, below), and no text substitution
+will be performed.
 
 This also saves the value, or C<undef>, in the generation-time
 hash C<< %Defs >>.  This can be used, e.g., to select include filenames
@@ -661,6 +677,26 @@ script.
 Don't evaluate Perl code, just write the generated code to STDOUT.
 By analogy with the C<-E> option of gcc.
 
+=item -s, --set B<name>[=B<value>]
+
+As B<-D>, but:
+
+=over
+
+=item *
+
+Does not substitute text in the body of the document;
+
+=item *
+
+Saves into C<< %Sets >> at generation time; and
+
+=item *
+
+Saves into C<< %S >> in the generated script.
+
+=back
+
 =item --man
 
 Full documentation, viewed in your default pager if configured.
@@ -677,7 +713,8 @@ Shows just the usage summary
 
 =head1 DEFINITIONS
 
-B<-D> items may be evaluated in any order --- do not rely on left-to-right
+B<-D> and B<-s> items may be evaluated in any order ---
+do not rely on left-to-right
 evaluation in the order given on the command line.
 
 If your shell strips quotes, you may need to escape them: B<value> must
@@ -722,8 +759,8 @@ The preamble also keeps you safe from some basic issues.
 
 Code at L<https://github.com/d-ash/perlpp>.
 Distributed under MIT license.
-By Andrey Shubin (L<andrey.shubin@gmail.com>); additional contributions by
-Chris White (cxw42 at Github).
+By Andrey Shubin (d-ash at Github; L<andrey.shubin@gmail.com>) and
+Chris White (cxw42 at Github; L<cxwembedded@gmail.com>).
 
 =cut
 

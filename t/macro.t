@@ -18,6 +18,8 @@ my @testcases=(
 	['-D foo=42', '<?:macro say $Defs{foo}; ?>', qr/^42/],
 	['-D incfile=' . $incfn , '<?:macro Include $Defs{incfile}; ?>',
 		qr/^a4b/],
+	['-s incfile=' . $incfn , '<?:macro Include $Sets{incfile}; ?>',
+		qr/^a4b/],
 	['', '<?:immediate say "print 128;"; ?>',qr/^128$/],
 
 ); #@testcases
