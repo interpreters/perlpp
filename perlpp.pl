@@ -222,6 +222,11 @@ sub ExecuteCommand {
 		die "Invalid name \"$nm\" in \"ifdef\"" if $nm !~ DEFINE_NAME_RE;
 		print "if(defined(\$D\{$nm\})) {\n";	# Don't need exists()
 
+	} elsif ( $cmd =~ /^ifndef\s++(?<nm>\S++)\s*+$/i ) {	# test in %D
+		my $nm = $+{nm};		# Otherwise !~ clobbers it.
+		die "Invalid name \"$nm\" in \"ifdef\"" if $nm !~ DEFINE_NAME_RE;
+		print "if(!defined(\$D\{$nm\})) {\n";	# Don't need exists()
+
 	} elsif ( $cmd =~ /^if\s++(.*+)$/i ) {	# :if - General test of %D values
 		my $test = $1;		# $1 =~ doesn't work for me
 		if( $test !~ DEFINE_NAME_IN_CONTEXT_RE ) {
