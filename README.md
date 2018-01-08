@@ -231,6 +231,7 @@ counterparts.
 - `<?:define NAME ?>`
 - `<?:undef NAME ?>`
 - `<?:ifdef NAME ?>`
+- `<?:ifndef NAME ?>`
 - `<?:else ?>`
 - `<?:endif ?>`
 - `<?:if NAME CONDITION ?>`
