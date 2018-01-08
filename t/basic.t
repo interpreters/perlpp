@@ -16,6 +16,7 @@ my @testcases=(
 	['Foo <?= 2+2 ?> <? print "?>Howdy, "world!"  I\'m cool.<?"; ?> bar'."\n",
 		'Foo 4 Howdy, "world!"  I\'m cool. bar'."\n"],
 	['<?# This output file is tremendously boring. ?>',''],
+	['<? my $x=42; #this is a comment?><?=$x?>','42'],
 	['<?#ditto?>',''],
 	['<? my $foo=80; ?>#define QUUX (<?= $foo/40 ?>)', '#define QUUX (2)'],
 	['<? print (map { $_ . $_ . "\n" } qw(a b c d)); ?>',"aa\nbb\ncc\ndd\n"],

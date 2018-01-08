@@ -5,7 +5,7 @@
 # http://darkness.codefu.org/wordpress/2003/03/perl-scoping/
 
 package PerlPP;
-our $VERSION = '0.2.0';
+our $VERSION = '0.3.0-alpha';
 
 use v5.10;		# provides // - http://perldoc.perl.org/perl5100delta.html
 use strict;
@@ -31,6 +31,14 @@ use constant TAG_CLOSE		=> '?' . '>';	# appear in this file.
 use constant OPENING_RE		=> qr/^(.*?)\Q${\(TAG_OPEN)}\E(.*)$/s;	# /s states for single-line mode
 use constant CLOSING_RE		=> qr/^(.*?)\Q${\(TAG_CLOSE)}\E(.*)$/s;
 
+use constant DEFINE_NAME_RE	=>
+	qr/^(?<nm>[[:alpha:]][[:alnum:]_]*|[[:alpha:]_][[:alnum:]_]+)$/i;
+	# Valid names for -D.  TODO expand this to Unicode.
+	# Bare underscore isn't permitted because it's special in perl.
+use constant DEFINE_NAME_IN_CONTEXT_RE	=>
+	qr/^(?<nm>[[:alpha:]][[:alnum:]_]*|[[:alpha:]_][[:alnum:]_]+)\s*+(?<rest>.*+)$/i;
+	# A valid name followed by something else.  Used for, e.g., :if and :elsif.
+
 # Modes - each output buffer has one
 use constant OBMODE_PLAIN	=> 0;	# literal text, not in tag_open/tag_close
 use constant OBMODE_CAPTURE	=> 1;	# same as OBMODE_PLAIN but with capturing
@@ -45,12 +53,24 @@ use constant OB_MODE 		=> 0;	# each stack entry is a two-element array
 use constant OB_CONTENTS 	=> 1;
 
 # === Globals =============================================================
-my $Package = '';
-my @Preprocessors = ();
-my @Postprocessors = ();
+
+# Internals
+my $Package = '';			# package name for the generated script
 my $RootSTDOUT;
 my $WorkingDir = '.';
-my %Prefixes = ();
+
+# Vars accessible to, or used by or on behalf of, :macro / :immediate code
+my @Preprocessors = ();
+my @Postprocessors = ();
+my %Prefixes = ();			# set by ExecuteCommand; used by PrepareString
+
+# -D definitions.  -Dfoo creates $Defs{foo}==true and $Defs_repl_text{foo}==''.
+my %Defs = ();				# Command-line -D arguments
+my $Defs_RE = false;		# Regex that matches any -D name
+my %Defs_repl_text = ();	# Replacement text for -D names
+
+# -s definitions.
+my %Sets = ();				# Command-line -s arguments
 
 # Output-buffer stack
 my @OutputBuffers = ();		# each entry is a two-element array
@@ -143,9 +163,16 @@ sub PrepareString {
 	my $s = shift;
 	my $pref;
 
+	# Replace -D options.  Do this before prefixes so that we don't create
+	# prefix matches.  TODO? combine the defs and prefixes into one RE?
+	$s =~ s/$Defs_RE/$Defs_repl_text{$1}/g if $Defs_RE;
+
+	# Replace prefixes
 	foreach $pref ( keys %Prefixes ) {
 		$s =~ s/(^|\W)\Q$pref\E/$1$Prefixes{ $pref }/g;
 	}
+
+	# Quote it for printing
 	return QuoteString( $s );
 }
 
@@ -154,19 +181,78 @@ sub ExecuteCommand {
 	my $fn;
 	my $dir;
 
-	if ( $cmd =~ /^include\s+(?:['"](?<fn>[^'"]+)['"]|(?<fn>\S+))\s*$/i ) {
+	if ( $cmd =~ /^include\s++(?:['"](?<fn>[^'"]+)['"]|(?<fn>\S+))\s*$/i ) {
 		ProcessFile( $WorkingDir . "/" . $+{fn} );
 
-	} elsif ( $cmd =~ /^macro\s+(.*)$/si ) {
+	} elsif ( $cmd =~ /^macro\s++(.*+)$/si ) {
 		StartOB();									# plain text
 		eval( $1 ); warn $@ if $@;
 		print "print " . PrepareString( EndOB() ) . ";\n";
 
-	} elsif ( $cmd =~ /^immediate\s+(.*)$/si ) {
+	} elsif ( $cmd =~ /^immediate\s++(.*+)$/si ) {
 		eval( $1 ); warn $@ if $@;
 
-	} elsif ( $cmd =~ /^prefix\s+(\S+)\s+(\S+)\s*$/i ) {
+	} elsif ( $cmd =~ /^prefix\s++(\S++)\s++(\S++)\s*+$/i ) {
 		$Prefixes{ $1 } = $2;
+
+	# Definitions
+	} elsif ( $cmd =~ /^define\s++(.*+)$/i ) {			# set in %D
+		my $test = $1;	# Otherwise !~ clobbers it.
+		if( $test !~ DEFINE_NAME_IN_CONTEXT_RE ) {
+			die "Could not understand \"define\" command \"$test\"." .
+				"  Maybe an invalid variable name?";
+		}
+		my $nm = $+{nm};
+		my $rest = $+{rest};
+
+		# Set the default value to true if non provided
+		$rest =~ s/^\s+|\s+$//g;			# trim whitespace
+		$rest='true' if not length($rest);	# default to true
+
+		print "\$D\{$nm\} = ($rest) ;\n";
+
+	} elsif ( $cmd =~ /^undef\s++(?<nm>\S++)\s*+$/i ) {	# clear from %D
+		my $nm = $+{nm};
+		die "Invalid name \"$nm\" in \"undef\"" if $nm !~ DEFINE_NAME_RE;
+		print "\$D\{$nm\} = undef;\n";
+
+	# Conditionals
+	} elsif ( $cmd =~ /^ifdef\s++(?<nm>\S++)\s*+$/i ) {	# test in %D
+		my $nm = $+{nm};		# Otherwise !~ clobbers it.
+		die "Invalid name \"$nm\" in \"ifdef\"" if $nm !~ DEFINE_NAME_RE;
+		print "if(defined(\$D\{$nm\})) {\n";	# Don't need exists()
+
+	} elsif ( $cmd =~ /^ifndef\s++(?<nm>\S++)\s*+$/i ) {	# test in %D
+		my $nm = $+{nm};		# Otherwise !~ clobbers it.
+		die "Invalid name \"$nm\" in \"ifdef\"" if $nm !~ DEFINE_NAME_RE;
+		print "if(!defined(\$D\{$nm\})) {\n";	# Don't need exists()
+
+	} elsif ( $cmd =~ /^if\s++(.*+)$/i ) {	# :if - General test of %D values
+		my $test = $1;		# $1 =~ doesn't work for me
+		if( $test !~ DEFINE_NAME_IN_CONTEXT_RE ) {
+			die "Could not understand \"if\" command \"$test\"." .
+				"  Maybe an invalid variable name?";
+		}
+		my $ref="\$D\{$+{nm}\}";
+		print "if(exists($ref) && ( $ref $+{rest} ) ) {\n";
+			# Test exists() first so undef maps to false rather than warning.
+
+	} elsif ( $cmd =~ /^(elsif|elseif|elif)\s++(.*+)$/ ) {	# :elsif with condition
+		my $cmd = $1;
+		my $test = $2;
+		if( $test !~ DEFINE_NAME_IN_CONTEXT_RE ) {
+			die "Could not understand \"$cmd\" command \"$test\"." .
+				"  Maybe an invalid variable name?";
+		}
+		my $ref="\$D\{$+{nm}\}";
+		print "} elsif(exists($ref) && ( $ref $+{rest} ) ) {\n";
+			# Test exists() first so undef maps to false rather than warning.
+
+	} elsif ( $cmd =~ /^else\s*+$/i ) {
+		print "} else {\n";
+
+	} elsif ( $cmd =~ /^endif\s*+$/i ) {				# end of a block
+		print "}\n";
 
 	} else {
 		die "Unknown PerlPP command: ${cmd}";
@@ -225,14 +311,14 @@ sub OnOpening {
 sub OnClosing {
 	my $inside;
 	my $insetMode;
-	my $plainMode = OBMODE_PLAIN;
+	my $nextMode = OBMODE_PLAIN;
 
 	$insetMode = GetModeOfOB();
 	$inside = EndOB();								# contents of the inset
 	if ( $inside =~ /"$/ ) {
 		StartOB( $insetMode );						# restore contents of the inset
 		print substr( $inside, 0, -1 );
-		$plainMode = OBMODE_CAPTURE;
+		$nextMode = OBMODE_CAPTURE;
 	} else {
 		if ( $insetMode == OBMODE_ECHO ) {
 			print "print ${inside};\n";				# don't wrap in (), trailing semicolon
@@ -240,16 +326,18 @@ sub OnClosing {
 			ExecuteCommand( $inside );
 		} elsif ( $insetMode == OBMODE_COMMENT ) {
 			# Ignore the contents - no operation
+		} elsif ( $insetMode == OBMODE_CODE ) {
+			print "$inside\n";	# \n so you can put comments in your perl code
 		} else {
 			print $inside;
 		}
 
 		if ( GetModeOfOB() == OBMODE_CAPTURE ) {		# if the inset is wrapped
 			print EndOB() . " PerlPP::EndOB(); } . ";	# end of do { .... } statement
-			$plainMode = OBMODE_CAPTURE;				# back to capturing
+			$nextMode = OBMODE_CAPTURE;				# back to capturing
 		}
 	}
-	StartOB( $plainMode );							# plain text
+	StartOB( $nextMode );							# plain text
 } #OnClosing()
 
 sub RunPerlPP {
@@ -368,12 +456,13 @@ my %CMDLINE_OPTS = (
 	# lowercase before upper, although the code does not require that order.
 
 	EVAL => ['e','|eval=s', ""],
-	DEBUG => ['d','|debug', false],
+	DEBUG => ['d','|E|debug', false],
 	# -h and --help reserved
 	# --man reserved
 	# INPUT_FILENAME assigned by parse_command_line_into
 	OUTPUT_FILENAME => ['o','|output=s', ""],
-	DEFS => ['s','|set=s%'],
+	DEFS => ['D','|define:s%'],		# In %D, and text substitution
+	SETS => ['s','|set:s%'],		# Extra data in %S, without text substitution
 	# --usage reserved
 	# -? reserved
 );
@@ -398,9 +487,9 @@ sub parse_command_line_into {
 	);
 
 	# Get options
-	GetOptions($hrOptsOut,  # destination hash
-		'usage|?', 'h|help', 'man',
-		map { $_->[0] . $_->[1] } values %CMDLINE_OPTS,	# options strs
+	GetOptions($hrOptsOut,				# destination hash
+		'usage|?', 'h|help', 'man',		# options we handle here
+		map { $_->[0] . $_->[1] } values %CMDLINE_OPTS,		# options strs
 		)
 	or pod2usage(-verbose => 0, -exitval => EXIT_PARAM_ERR);	# unknown opt
 
@@ -411,9 +500,14 @@ sub parse_command_line_into {
 
 	# Map the option names from GetOptions back to the internal names we use,
 	# e.g., $hrOptsOut->{EVAL} from $hrOptsOut->{e}.
-	my %revmap = map {  $CMDLINE_OPTS{$_}->[0] => $_ } keys %CMDLINE_OPTS;
+	my %revmap = map { $CMDLINE_OPTS{$_}->[0] => $_ } keys %CMDLINE_OPTS;
 	for my $optname (keys %$hrOptsOut) {
 		$hrOptsOut->{ $revmap{$optname} } = $hrOptsOut->{ $optname };
+	}
+
+	# Check the names of any -D flags
+	for my $k (keys %{$hrOptsOut->{DEFS}}) {
+		die "Invalid -D name \"$k\"" if $k !~ DEFINE_NAME_RE;
 	}
 
 	# Process other arguments.  TODO? support multiple input filenames?
@@ -426,19 +520,78 @@ sub Main {
 	my %opts;
 	parse_command_line_into \%opts;
 
+	# Preamble
+
 	$Package = $opts{INPUT_FILENAME};
-	$Package =~ s/^([a-zA-Z_][a-zA-Z_0-9.]*).p$/$1/;
-	$Package =~ s/[^a-z0-9]/_/gi;
+	$Package =~ s/^.*?([a-z_][a-z_0-9.]*).pl?$/$1/i;
+	$Package =~ s/[^a-z0-9_]/_/gi;
 		# $Package is not the whole name, so can start with a number.
 
 	StartOB();
-	print "package PPP_${Package};\nuse strict;\nuse warnings;\n";
+	print "package PPP_${Package};\nuse 5.010;\nuse strict;\nuse warnings;\n";
+	print "use constant { true => !!1, false => !!0 };\n";
 
-	# Transfer parameters from the command line (-s) to the processed file.
-	# The parameters are in %S, by analogy with -s.
-	print "my %S = (\n";
+	# Definitions
+
+	# Transfer parameters from the command line (-D) to the processed file,
+	# as textual representations of expressions.
+	# The parameters are in %D at runtime.
+	print "my %D = (\n";
 	for my $defname (keys %{$opts{DEFS}}) {
-		print "    $defname => ", ${$opts{DEFS}}{$defname}, ",\n";
+		my $val = ${$opts{DEFS}}{$defname} // 'true';
+			# just in case it's undef.  "true" is the constant in this context
+		$val = 'true' if $val eq '';
+			# "-D foo" (without a value) sets it to _true_ so
+			# "if($D{foo})" will work.  Getopt::Long gives us '' as the
+			# value in that situation.
+		print "    $defname => $val,\n";
+	}
+	print ");\n";
+
+	# Save a copy for use at generation time
+	%Defs = map {	my $v = eval(${$opts{DEFS}}{$_});
+					warn "Could not evaluate -D \"$_\": $@" if $@;
+					$_ => ($v // true)
+				}
+			keys %{$opts{DEFS}};
+
+	# Set up regex for text substitution of Defs.
+	# Modified from http://www.perlmonks.org/?node_id=989740 by
+	# AnomalousMonk, http://www.perlmonks.org/?node_id=634253
+	if(%{$opts{DEFS}}) {
+		my $rx_search =
+			'\b(' . (join '|', map quotemeta, keys %{$opts{DEFS}}) . ')\b';
+		$Defs_RE = qr{$rx_search};
+
+		# Save the replacement values.  If a value cannot be evaluated,
+		# use the name so the replacement will not change the text.
+		%Defs_repl_text =
+			map {	my $v = eval(${$opts{DEFS}}{$_});
+					($@ || !defined($v)) ? ($_ => $_) : ($_ => ('' . $v))
+				}
+			keys %{$opts{DEFS}};
+	}
+
+	# Now do SETS: -s or --set, into %S by analogy with -D and %D.
+
+	# Save a copy for use at generation time
+	%Sets = map {	my $v = eval(${$opts{SETS}}{$_});
+					warn "Could not evaluate -s \"$_\": $@" if $@;
+					$_ => ($v // true)
+				}
+			keys %{$opts{SETS}};
+
+	# Make the copy for runtime
+	print "my %S = (\n";
+	for my $defname (keys %{$opts{SETS}}) {
+		my $val = ${$opts{SETS}}{$defname};
+		if(!defined($val)) {
+		}
+		$val = 'true' if $val eq '';
+			# "-s foo" (without a value) sets it to _true_ so
+			# "if($S{foo})" will work.  Getopt::Long gives us '' as the
+			# value in that situation.
+		print "    $defname => $val,\n";
 	}
 	print ");\n";
 
@@ -450,12 +603,24 @@ sub Main {
 
 	my $script = EndOB();							# The generated Perl script
 
+	# --- Run it ---
 	if ( $opts{DEBUG} ) {
 		print $script;
+
 	} else {
 		StartOB();									# output of the Perl script
-		eval( $script ); warn $@ if $@;
-		OutputResult( \EndOB(), $opts{OUTPUT_FILENAME} );
+		my $result;		# save any errors from the eval
+
+		# TODO hide %Defs and others of our variables we don't want
+		# $script to access.
+		eval( $script ); $result=$@;
+
+		if($result) {	# Report errors to console and shell
+			print STDERR $result;
+			exit 1;
+		} else {		# Save successful output
+			OutputResult( \EndOB(), $opts{OUTPUT_FILENAME} );
+		}
 	}
 } #Main()
 
@@ -478,6 +643,8 @@ perl perlpp.pl [options] [filename]
 
 If no [filename] is given, input will be read from stdin.
 
+Run C<perlpp --help> for a quick reference, or C<perlpp --man> for full docs.
+
 =head1 OPTIONS
 
 =over
@@ -486,40 +653,62 @@ If no [filename] is given, input will be read from stdin.
 
 Output to B<filename> instead of STDOUT.
 
-=item -s, --set B<name>=B<value>
+=item -D, --define B<name>[=B<value>]
 
-In the generated script, set C<< $S{B<name>} >> to B<value>.
-The hash C<%S> always exists, but is empty if no B<-s> options are
+In the generated script, set C<< $D{B<name>} >> to B<value>.
+The hash C<%D> always exists, but is empty if no B<-D> options are
 given on the command line.
 
-Note: If your shell strips quotes, you may need to escape them.  B<value> must
-be a valid Perl expression.  So, under bash, this works:
+The B<name> will also be replaced with the B<value> in the text of the file.
+If B<value> cannot be evaluated, no substitution is made for B<name>.
 
-    perlpp -s name=\"Hello, world!\"
+If you omit the B<< =value >>, the value will be the constant C<true>
+(see L</"The generated script">, below), and no text substitution
+will be performed.
 
-The backslashes (C<\"> instead of C<">) are required to prevent bash
-from removing the double-quotes.  Alternatively, this works:
+This also saves the value, or C<undef>, in the generation-time
+hash C<< %Defs >>.  This can be used, e.g., to select include filenames
+depending on B<-D> arguments.
 
-    perlpp -s 'name="Hello, World"'
-
-with the whole argument to B<-s> in single quotes.
+See L</"Definitions">, below, for more information.
 
 =item -e, --eval B<statement>
 
 Evaluate the B<statement> before any other Perl code in the generated
 script.
 
-=item -d, --debug
+=item -E, --debug (or -d for backwards compatibility)
 
 Don't evaluate Perl code, just write the generated code to STDOUT.
+By analogy with the C<-E> option of gcc.
 
-=item -h, --help
+=item -s, --set B<name>[=B<value>]
 
-Usage help.
+As B<-D>, but:
+
+=over
+
+=item *
+
+Does not substitute text in the body of the document;
+
+=item *
+
+Saves into C<< %Sets >> at generation time; and
+
+=item *
+
+Saves into C<< %S >> in the generated script.
+
+=back
 
 =item --man
 
-Full documentation
+Full documentation, viewed in your default pager if configured.
+
+=item -h, --help
+
+Usage help, printed to STDOUT.
 
 =item -?, --usage
 
@@ -527,14 +716,58 @@ Shows just the usage summary
 
 =back
 
+=head1 DEFINITIONS
+
+B<-D> and B<-s> items may be evaluated in any order ---
+do not rely on left-to-right
+evaluation in the order given on the command line.
+
+If your shell strips quotes, you may need to escape them: B<value> must
+be a valid Perl expression.  So, under bash, this works:
+
+	perlpp -D name=\"Hello, world!\"
+
+The backslashes (C<\"> instead of C<">) are required to prevent bash
+from removing the double-quotes.  Alternatively, this works:
+
+	perlpp -D 'name="Hello, World"'
+
+with the whole argument to B<-D> in single quotes.
+
+Also note that the space after B<-D> is optional, so
+
+	perlpp -Dfoo
+	perlpp -Dbar=42
+
+both work.
+
+=head1 THE GENERATED SCRIPT
+
+The code you specify in the input file is in a Perl environment with the
+following definitions in place:
+
+	package PPP_foo;
+	use 5.010;
+	use strict;
+	use warnings;
+	use constant { true => !!1, false => !!0 };
+
+where B<foo> is the input filename, if any, transformed to only include
+[A-Za-z0-9_].
+
+This preamble requires Perl 5.10, which perlpp itself requires.
+On the plus side, requring v5.10 gives you C<//>
+(the defined-or operator) and the builtin C<say>.
+The preamble also keeps you safe from some basic issues.
+
 =head1 COPYRIGHT
 
 Code at L<https://github.com/d-ash/perlpp>.
 Distributed under MIT license.
-By Andrey Shubin (L<andrey.shubin@gmail.com>); additional contributions by
-Chris White (cxw42 at Github).
+By Andrey Shubin (d-ash at Github; L<andrey.shubin@gmail.com>) and
+Chris White (cxw42 at Github; L<cxwembedded@gmail.com>).
 
 =cut
 
-# vi: set ts=4 sts=0 sw=4 noet ai: #
+# vi: set ts=4 sts=0 sw=4 noet ai fo-=o: #
 
