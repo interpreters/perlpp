@@ -55,6 +55,8 @@ RESULT
 	],
 	['foo<? print "bar";?>',"foobar"],
 	['foo<?/ print "bar";?>',"foo\nbar"],
+	['<?!echo Howdy!?>',"Howdy!\n"],
+	# Note: tests of -k are in t/external-command.t
 	['foo<?:prefix foo bar ?>' . "\n" . 'foo fooSomeWord thingfoo',
 		"foo\nbar barSomeWord thingfoo"],
 	['<? print "?>That\'s cool<?" . "?>, really.<?"; ?>',

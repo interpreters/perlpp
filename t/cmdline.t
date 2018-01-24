@@ -2,7 +2,7 @@
 # Tests of perlpp command-line options
 use strict;
 use warnings;
-use Test::More 'no_plan';
+use Test::More;
 use IPC::Run3;
 use constant CMD => 'perl perlpp.pl';
 
@@ -96,9 +96,17 @@ my @testcases=(
 
 ); #@testcases
 
-#plan tests => scalar @testcases;
-# TODO count the out_re and err_re in @testcases, since the number of
+# count the out_re and err_re in @testcases, since the number of
 # tests is the sum of those counts.
+my $testcount = 0;
+
+for my $lrTest (@testcases) {
+	my ($out_re, $err_re) = @$lrTest[2..3];
+	++$testcount if defined $out_re;
+	++$testcount if defined $err_re;
+}
+
+plan tests => $testcount;
 
 for my $lrTest (@testcases) {
 	my ($opts, $testin, $out_re, $err_re) = @$lrTest;

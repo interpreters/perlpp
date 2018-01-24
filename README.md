@@ -28,11 +28,12 @@ Usage
 					Perl code of the input files.
 		-E, --debug		Don't evaluate Perl code, just write
 					it to STDERR.
-		-s, --set name=value	As -D, but gneerates into %S and does
+		-k, --keep-going	Don't stop on errors in an external command
+		-s, --set name=value	As -D, but generates into %S and does
 					not substitute in the text body.
 		-h, --help		Usage help.
 
-In a **-D** command, the `value` must be a valid Perl value, e.g., `"foo"`
+In a **-D** option, the `value` must be a valid Perl value, e.g., `"foo"`
 for a string.  This may require you to escape quotes in the **-D** argument,
 depending on your shell.  E.g., if `-D foo="bar"` doesn't work, try
 `-D 'foo="bar"'` (with single quotes around the whole `name=value` part).
@@ -46,9 +47,10 @@ There are several modes, indicated by the character after the `<?`:
 
 	<?	code mode: Perl code is between the tags.
 	<?=	echo mode: prints a Perl expression
-	<?:	command mode: executed by PerlPP itself (see below)
+	<?:	internal-command mode: executed by PerlPP itself (see below)
 	<?/	code mode, beginning with printing a line break.
 	<?#	comment mode: everything in <?# ... ?> is ignored.
+	<?!	external mode: everything in <?! ... ?> is run as an external command
 
 The code mode is started by `<?` followed by any number of whitespaces
 or line breaks.
@@ -72,6 +74,7 @@ The generated script:
 - `use`s `5.010`, `strict`, and `warnings`
 - provides constants `true` (=`!!1`) and `false` (=`!!0`) (with `use constant`)
 - Declares `my %D` and initializes `%D` based on any **-D** options you provide
+- Declares `my %S` and initializes `%S` based on any **-s** options you provide
 
 Other than that, everything in the script comes from your input file(s).
 Use the **-E** option to see the generated script.
@@ -140,8 +143,29 @@ produces the output
 
 So `<?/ ... ?>` is effectively a shorthand for `<? print "\n"; ... ?>`.
 
-Commands
---------
+### External commands using `<?!`
+
+The example
+
+	<?!echo Howdy!?>
+
+produces the output
+
+	Howdy!
+
+If the command returns an error status, perlpp will as well, unless you
+specify **-k**.  That way you can use perlpp and external commands in `make`
+and other programs that check exit codes, and not silently lose error
+information.  For example, running `perlpp` on the input:
+
+	<?! false ?> More stuff
+
+will give you an error message (from the `false`'s error return), and will not
+print `More stuff`.  Running `perlpp -k` on that same input will give the
+error message and will print `More stuff`.
+
+Internal Commands
+-----------------
 
 ### Include
 
@@ -218,7 +242,8 @@ string `'alphabet '`, so the result will be
 	ALPHABET
 		ABCDEFGHIJKLMNOPQRSTUVWXYZ
 
-Capturing works in all modes: code, echo, or command mode.
+Capturing works in all modes: code, echo, internal-command, or
+external-command mode.
 
 C Preprocessor Emulation
 ------------------------

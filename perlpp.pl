@@ -5,7 +5,7 @@
 # http://darkness.codefu.org/wordpress/2003/03/perl-scoping/
 
 package PerlPP;
-our $VERSION = '0.3.0-alpha';
+our $VERSION = '0.3.0-pre.2';
 
 use v5.10;		# provides // - http://perldoc.perl.org/perl5100delta.html
 use strict;
@@ -46,6 +46,7 @@ use constant OBMODE_CODE	=> 2;	# perl code
 use constant OBMODE_ECHO	=> 3;
 use constant OBMODE_COMMAND	=> 4;
 use constant OBMODE_COMMENT	=> 5;
+use constant OBMODE_SYSTEM	=> 6;	# an external command being run
 
 # Layout of the output-buffer stack.
 use constant OB_TOP 		=> 0;	# top of the stack is [0]: use [un]shift
@@ -58,6 +59,7 @@ use constant OB_CONTENTS 	=> 1;
 my $Package = '';			# package name for the generated script
 my $RootSTDOUT;
 my $WorkingDir = '.';
+my %Opts;					# Parsed command-line options
 
 # Vars accessible to, or used by or on behalf of, :macro / :immediate code
 my @Preprocessors = ();
@@ -259,6 +261,45 @@ sub ExecuteCommand {
 	}
 } #ExecuteCommand()
 
+sub GetStatusReport {
+	# Get a human-readable result string, given $? and $! from a qx//.
+	# Modified from http://perldoc.perl.org/functions/system.html
+	my $retval;
+	my $status = shift;
+	my $errmsg = shift || '';
+
+	if ($status == -1) {
+		$retval = "failed to execute: $errmsg";
+	} elsif ($status & 127) {
+		$retval = sprintf("process died with signal %d, %s coredump",
+			($status & 127), ($status & 128) ? 'with' : 'without');
+	} elsif($status != 0) {
+		$retval = sprintf("process exited with value %d", $status >> 8);
+	}
+	return $retval;
+} # GetStatusReport()
+
+sub ShellOut {		# Run an external command
+	my $cmd = shift =~ s/^\s+|\s+$//gr;		# trim leading/trailing whitespace
+	die "No command provided to @{[TAG_OPEN]}!...@{[TAG_CLOSE]}" unless $cmd;
+	$cmd = QuoteString $cmd;	# note: cmd is now wrapped in ''
+
+	my $error_response = ($Opts{KEEP_GOING} ? 'warn' : 'die');	# How we will handle errors
+
+	print(
+		qq{do {
+			my \$output = qx${cmd};
+			my \$status = PerlPP::GetStatusReport(\$?, \$!);
+			if(\$status) {
+				$error_response("perlpp: command '" . ${cmd} . "' failed: \${status}; invoked");
+			} else {
+				print \$output;
+			}
+		};
+		} =~ s/^\t{2}//gmr	# de-indent
+	);
+} #ShellOut()
+
 sub OnOpening {
 	# takes the rest of the string, beginning right after the ? of the tag_open
 	# returns (withinTag, string still to be processed)
@@ -286,6 +327,8 @@ sub OnOpening {
 			# OBMODE_CODE
 		} elsif ( $after =~ /^(?:\s|$)/ ) {
 			# OBMODE_CODE
+		} elsif ( $after =~ /^!/ ) {
+			$insetMode = OBMODE_SYSTEM;
 		} elsif ( $after =~ /^"/ ) {
 			die "Unexpected end of capturing";
 		} else {
@@ -328,6 +371,8 @@ sub OnClosing {
 			# Ignore the contents - no operation
 		} elsif ( $insetMode == OBMODE_CODE ) {
 			print "$inside\n";	# \n so you can put comments in your perl code
+		} elsif ( $insetMode == OBMODE_SYSTEM ) {
+			ShellOut( $inside );
 		} else {
 			print $inside;
 		}
@@ -447,19 +492,20 @@ sub OutputResult {
 	close( $f ) or die $!;
 } #OutputResult()
 
-# === Command line ========================================================
+# === Command line parsing ================================================
 
 my %CMDLINE_OPTS = (
-	# hash from internal name to array reference of j
+	# hash from internal name to array reference of
 	# [getopt-name, getopt-options, optional default-value]
 	# They are listed in alphabetical order by option name,
 	# lowercase before upper, although the code does not require that order.
 
-	EVAL => ['e','|eval=s', ""],
+	EVAL => ['e','|eval=s', ''],
 	DEBUG => ['d','|E|debug', false],
 	# -h and --help reserved
 	# --man reserved
-	# INPUT_FILENAME assigned by parse_command_line_into
+	# INPUT_FILENAME assigned by parse_command_line_into()
+	KEEP_GOING => ['k','|keep-going',false],
 	OUTPUT_FILENAME => ['o','|output=s', ""],
 	DEFS => ['D','|define:s%'],		# In %D, and text substitution
 	SETS => ['s','|set:s%'],		# Extra data in %S, without text substitution
@@ -517,17 +563,16 @@ sub parse_command_line_into {
 
 # === Main ================================================================
 sub Main {
-	my %opts;
-	parse_command_line_into \%opts;
+	parse_command_line_into \%Opts;
 
 	# Preamble
 
-	$Package = $opts{INPUT_FILENAME};
+	$Package = $Opts{INPUT_FILENAME};
 	$Package =~ s/^.*?([a-z_][a-z_0-9.]*).pl?$/$1/i;
 	$Package =~ s/[^a-z0-9_]/_/gi;
 		# $Package is not the whole name, so can start with a number.
 
-	StartOB();
+	StartOB();	# Output from here on will be included in the generated script
 	print "package PPP_${Package};\nuse 5.010;\nuse strict;\nuse warnings;\n";
 	print "use constant { true => !!1, false => !!0 };\n";
 
@@ -537,8 +582,8 @@ sub Main {
 	# as textual representations of expressions.
 	# The parameters are in %D at runtime.
 	print "my %D = (\n";
-	for my $defname (keys %{$opts{DEFS}}) {
-		my $val = ${$opts{DEFS}}{$defname} // 'true';
+	for my $defname (keys %{$Opts{DEFS}}) {
+		my $val = ${$Opts{DEFS}}{$defname} // 'true';
 			# just in case it's undef.  "true" is the constant in this context
 		$val = 'true' if $val eq '';
 			# "-D foo" (without a value) sets it to _true_ so
@@ -549,42 +594,42 @@ sub Main {
 	print ");\n";
 
 	# Save a copy for use at generation time
-	%Defs = map {	my $v = eval(${$opts{DEFS}}{$_});
+	%Defs = map {	my $v = eval(${$Opts{DEFS}}{$_});
 					warn "Could not evaluate -D \"$_\": $@" if $@;
 					$_ => ($v // true)
 				}
-			keys %{$opts{DEFS}};
+			keys %{$Opts{DEFS}};
 
 	# Set up regex for text substitution of Defs.
 	# Modified from http://www.perlmonks.org/?node_id=989740 by
 	# AnomalousMonk, http://www.perlmonks.org/?node_id=634253
-	if(%{$opts{DEFS}}) {
+	if(%{$Opts{DEFS}}) {
 		my $rx_search =
-			'\b(' . (join '|', map quotemeta, keys %{$opts{DEFS}}) . ')\b';
+			'\b(' . (join '|', map quotemeta, keys %{$Opts{DEFS}}) . ')\b';
 		$Defs_RE = qr{$rx_search};
 
 		# Save the replacement values.  If a value cannot be evaluated,
 		# use the name so the replacement will not change the text.
 		%Defs_repl_text =
-			map {	my $v = eval(${$opts{DEFS}}{$_});
+			map {	my $v = eval(${$Opts{DEFS}}{$_});
 					($@ || !defined($v)) ? ($_ => $_) : ($_ => ('' . $v))
 				}
-			keys %{$opts{DEFS}};
+			keys %{$Opts{DEFS}};
 	}
 
 	# Now do SETS: -s or --set, into %S by analogy with -D and %D.
 
 	# Save a copy for use at generation time
-	%Sets = map {	my $v = eval(${$opts{SETS}}{$_});
+	%Sets = map {	my $v = eval(${$Opts{SETS}}{$_});
 					warn "Could not evaluate -s \"$_\": $@" if $@;
 					$_ => ($v // true)
 				}
-			keys %{$opts{SETS}};
+			keys %{$Opts{SETS}};
 
 	# Make the copy for runtime
 	print "my %S = (\n";
-	for my $defname (keys %{$opts{SETS}}) {
-		my $val = ${$opts{SETS}}{$defname};
+	for my $defname (keys %{$Opts{SETS}}) {
+		my $val = ${$Opts{SETS}}{$defname};
 		if(!defined($val)) {
 		}
 		$val = 'true' if $val eq '';
@@ -596,20 +641,20 @@ sub Main {
 	print ");\n";
 
 	# Initial code from the command line, if any
-	print $opts{EVAL}, "\n" if $opts{EVAL};
+	print $Opts{EVAL}, "\n" if $Opts{EVAL};
 
 	# The input file
-	ProcessFile( $opts{INPUT_FILENAME} );
+	ProcessFile( $Opts{INPUT_FILENAME} );
 
 	my $script = EndOB();							# The generated Perl script
 
 	# --- Run it ---
-	if ( $opts{DEBUG} ) {
+	if ( $Opts{DEBUG} ) {
 		print $script;
 
 	} else {
-		StartOB();									# output of the Perl script
-		my $result;		# save any errors from the eval
+		StartOB();		# Start collecting the output of the Perl script
+		my $result;		# To save any errors from the eval
 
 		# TODO hide %Defs and others of our variables we don't want
 		# $script to access.
@@ -619,7 +664,7 @@ sub Main {
 			print STDERR $result;
 			exit 1;
 		} else {		# Save successful output
-			OutputResult( \EndOB(), $opts{OUTPUT_FILENAME} );
+			OutputResult( \EndOB(), $Opts{OUTPUT_FILENAME} );
 		}
 	}
 } #Main()
@@ -681,6 +726,12 @@ script.
 
 Don't evaluate Perl code, just write the generated code to STDOUT.
 By analogy with the C<-E> option of gcc.
+
+=item -k, --keep-going
+
+Normally, errors in a C<!command> sequence will terminate further
+processing.  If B<-k> is given, an error message will be printed to stderr,
+but the script will keep running.
 
 =item -s, --set B<name>[=B<value>]
 
