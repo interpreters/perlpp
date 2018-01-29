@@ -317,6 +317,14 @@ and create corresponding *~/.vim/after/syntax/FILETYPE.vim*
 
 FILETYPE can be determined with `:set ft?`
 
+## Developing PerlPP
+
+Perlpp should run on any Perl v5.10+.  However, it does require `Getopt::Long`
+v2.50 or higher, so you might have to grab that from CPAN.
+To run the tests, you also need to grab `IPC::Run3`.
+
+The `Makefile` just runs the tests in `t/`; there is no build step.
+
 ## Copyright
 
 Distributed under the MIT license --- see

@@ -5,7 +5,7 @@
 # http://darkness.codefu.org/wordpress/2003/03/perl-scoping/
 
 package PerlPP;
-our $VERSION = '0.3.0-pre.2';
+our $VERSION = '0.3.0';
 
 use v5.10;		# provides // - http://perldoc.perl.org/perl5100delta.html
 use strict;
@@ -500,16 +500,17 @@ my %CMDLINE_OPTS = (
 	# They are listed in alphabetical order by option name,
 	# lowercase before upper, although the code does not require that order.
 
-	EVAL => ['e','|eval=s', ''],
 	DEBUG => ['d','|E|debug', false],
+	DEFS => ['D','|define:s%'],		# In %D, and text substitution
+	EVAL => ['e','|eval=s', ''],
 	# -h and --help reserved
-	# --man reserved
 	# INPUT_FILENAME assigned by parse_command_line_into()
 	KEEP_GOING => ['k','|keep-going',false],
+	# --man reserved
 	OUTPUT_FILENAME => ['o','|output=s', ""],
-	DEFS => ['D','|define:s%'],		# In %D, and text substitution
 	SETS => ['s','|set:s%'],		# Extra data in %S, without text substitution
 	# --usage reserved
+	PRINT_VERSION => ['v','|version'],
 	# -? reserved
 );
 
@@ -564,6 +565,11 @@ sub parse_command_line_into {
 # === Main ================================================================
 sub Main {
 	parse_command_line_into \%Opts;
+
+	if($Opts{PRINT_VERSION}) {
+		print "PerlPP version $VERSION\n";
+		return EXIT_OK;
+	}
 
 	# Preamble
 
@@ -662,14 +668,15 @@ sub Main {
 
 		if($result) {	# Report errors to console and shell
 			print STDERR $result;
-			exit 1;
+			return EXIT_PROC_ERR;
 		} else {		# Save successful output
 			OutputResult( \EndOB(), $Opts{OUTPUT_FILENAME} );
 		}
 	}
+	return EXIT_OK;
 } #Main()
 
-Main( @ARGV );
+exit Main( @ARGV );
 
 __END__
 # ### Documentation #######################################################
@@ -684,7 +691,7 @@ PerlPP: Perl preprocessor
 
 =head1 USAGE
 
-perl perlpp.pl [options] [filename]
+perl perlpp.pl [options] [--] [filename]
 
 If no [filename] is given, input will be read from stdin.
 
@@ -766,6 +773,10 @@ Usage help, printed to STDOUT.
 Shows just the usage summary
 
 =back
+
+=item --version
+
+Show the version number of perlpp
 
 =head1 DEFINITIONS
 
