@@ -10,6 +10,10 @@ my @testcases=(
 	# [$cmdline_options, $in (the script), $out_re (expected output),
 	#	$err_re (stderr output, if any)]
 
+	# version
+	['-v','',qr/\bversion\b/],
+	['--version','',qr/\bversion\b/],
+
 	# Debug output
 	['-d','',qr/^package PPP_;/],
 	['-d', '<?= 2+2 ?>', qr{print\s+2\+2\s*;}],
