@@ -715,14 +715,14 @@ The B<name> will also be replaced with the B<value> in the text of the file.
 If B<value> cannot be evaluated, no substitution is made for B<name>.
 
 If you omit the B<< =value >>, the value will be the constant C<true>
-(see L</"The generated script">, below), and no text substitution
+(see L<"The generated script"|/"THE GENERATED SCRIPT">, below), and no text substitution
 will be performed.
 
 This also saves the value, or C<undef>, in the generation-time
 hash C<< %Defs >>.  This can be used, e.g., to select include filenames
 depending on B<-D> arguments.
 
-See L</"Definitions">, below, for more information.
+See L<"Definitions"|/"DEFINITIONS">, below, for more information.
 
 =item -e, --eval B<statement>
 
@@ -772,11 +772,11 @@ Usage help, printed to STDOUT.
 
 Shows just the usage summary
 
-=back
-
 =item --version
 
 Show the version number of perlpp
+
+=back
 
 =head1 DEFINITIONS
 
