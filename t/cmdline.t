@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Test::More;
 use IPC::Run3;
-use constant CMD => 'perl perlpp.pl';
+use constant CMD => 'perl -Ilib bin/perlpp';
 
 my @testcases=(
 	# [$cmdline_options, $in (the script), $out_re (expected output),

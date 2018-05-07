@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Test::More 'no_plan';
 use IPC::Run3;
-use constant CMD => 'perl perlpp.pl';
+use constant CMD => 'perl -Ilib bin/perlpp';
 
 (my $whereami = __FILE__) =~ s/macro\.t$//;
 my $incfn = '\"' . $whereami . 'included.txt\"';
