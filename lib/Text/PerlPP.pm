@@ -3,7 +3,7 @@
 
 package Text::PerlPP;
 
-our $VERSION = '0.3.0';
+our $VERSION = '0.3.1';
 
 use 5.010;		# provides // - http://perldoc.perl.org/perl5100delta.html
 use strict;
@@ -853,6 +853,13 @@ L<http://cpanratings.perl.org/d/Text-PerlPP>
 L<http://search.cpan.org/dist/Text-PerlPP/>
 
 =back
+
+=head1 ALTERNATIVES
+
+Turns out there are about 2^googol modules that do similar things.  We think
+this one works pretty nicely, but here are some others in case you disagree.
+In no particular order: L<Text::EP3>, L<Text::Template>, L<Basset::Template>,
+L<ExtUtils::PerlPP>, L<HTML::EP>, L<PML>, L<Preproc::Tiny>, L<ePerl>, L<iperl>.
 
 =head1 AUTHORS
 

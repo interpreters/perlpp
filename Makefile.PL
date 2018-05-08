@@ -9,7 +9,7 @@ WriteMakefile(
     VERSION_FROM     => 'lib/Text/PerlPP.pm',
     ABSTRACT_FROM    => 'lib/Text/PerlPP.pm',
     LICENSE          => 'mit',
-    PL_FILES         => {},
+    EXE_FILES       => [ 'bin/perlpp' ],
     MIN_PERL_VERSION => '5.010',
     CONFIGURE_REQUIRES => {
         'ExtUtils::MakeMaker' => '0',
@@ -19,7 +19,7 @@ WriteMakefile(
     },
     PREREQ_PM => {
         'Pod::Usage'       => '0',
-        'Getopt::Long'     => '2.50',   # See issue #17
+        'Getopt::Long'     => '2.50',   # Per issue #17
     },
     dist  => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean => { FILES => 'Text-PerlPP-*' },
