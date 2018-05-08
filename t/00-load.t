@@ -11,3 +11,4 @@ BEGIN {
 }
 
 diag( "Testing Text::PerlPP $Text::PerlPP::VERSION, Perl $], $^X" );
+diag("Included from $Text::PerlPP::INCPATH");

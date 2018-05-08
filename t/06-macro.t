@@ -4,7 +4,11 @@ use strict;
 use warnings;
 use Test::More 'no_plan';
 use IPC::Run3;
-use constant CMD => 'perl -Ilib bin/perlpp';
+use Text::PerlPP;
+use constant CMD => "perl -I$Text::PerlPP::INCPATH " .
+	( $Text::PerlPP::INCPATH =~ m{blib/lib} ?
+		$Text::PerlPP::INCPATH =~ s{blib/lib\b.*}{blib/script/perlpp}r :
+		'bin/perlpp');
 
 (my $whereami = __FILE__) =~ s/06-macro\.t$//;
 my $incfn = '\"' . $whereami . 'included.txt\"';
@@ -16,10 +20,10 @@ my @testcases=(
 	#	$err_re (stderr output, if any)]
 
 	# %Defs
-	['-D foo=42', '<?:macro say $Defs{foo}; ?>', qr/^42/],
-	['-D incfile=' . $incfn , '<?:macro Include $Defs{incfile}; ?>',
+	['-D foo=42', '<?:macro say $Text::PerlPP::Defs{foo}; ?>', qr/^42/],
+	['-D incfile=' . $incfn , '<?:macro Include $Text::PerlPP::Defs{incfile}; ?>',
 		qr/^a4b/],
-	['-s incfile=' . $incfn , '<?:macro Include $Sets{incfile}; ?>',
+	['-s incfile=' . $incfn , '<?:macro Include $Text::PerlPP::Sets{incfile}; ?>',
 		qr/^a4b/],
 	['', '<?:immediate say "print 128;"; ?>',qr/^128$/],
 

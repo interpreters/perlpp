@@ -1,9 +1,17 @@
 #!perl
-# PerlPP: Perl preprocessor.  See documentation after __END__.
+# PerlPP: Perl preprocessor.  See the perldoc for usage.
 
 package Text::PerlPP;
 
 our $VERSION = '0.3.1';
+
+# Where we were included from.  Primarily for the benefit of test code.
+our $INCPATH;
+BEGIN {
+	$INCPATH = 'Text/PerlPP.pm';
+	$INCPATH = ($INC{$INCPATH} =~ s/$INCPATH$//r);
+	$INCPATH =~ s{[/\\]$}{} if length $INCPATH > 1;
+}
 
 use 5.010;		# provides // - http://perldoc.perl.org/perl5100delta.html
 use strict;
@@ -65,12 +73,12 @@ my @Postprocessors = ();
 my %Prefixes = ();			# set by ExecuteCommand; used by PrepareString
 
 # -D definitions.  -Dfoo creates $Defs{foo}==true and $Defs_repl_text{foo}==''.
-my %Defs = ();				# Command-line -D arguments
+our %Defs = ();				# Command-line -D arguments
 my $Defs_RE = false;		# Regex that matches any -D name
 my %Defs_repl_text = ();	# Replacement text for -D names
 
 # -s definitions.
-my %Sets = ();				# Command-line -s arguments
+our %Sets = ();				# Command-line -s arguments
 
 # Output-buffer stack
 my @OutputBuffers = ();		# each entry is a two-element array
@@ -721,9 +729,9 @@ If you omit the B<< =value >>, the value will be the constant C<true>
 (see L<"The generated script"|/"THE GENERATED SCRIPT">, below), and no text substitution
 will be performed.
 
-This also saves the value, or C<undef>, in the generation-time
-hash C<< %Defs >>.  This can be used, e.g., to select include filenames
-depending on B<-D> arguments.
+This also saves the value, or C<undef>, in the generation-time hash
+C<< %Text::PerlPP::Defs >>.  This can be used, e.g., to select include
+filenames depending on B<-D> arguments.
 
 See L<"Definitions"|/"DEFINITIONS">, below, for more information.
 
@@ -755,7 +763,7 @@ Does not substitute text in the body of the document;
 
 =item *
 
-Saves into C<< %Sets >> at generation time; and
+Saves into C<< %Text::PerlPP::Sets >> at generation time; and
 
 =item *
 

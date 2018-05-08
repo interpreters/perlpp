@@ -3,6 +3,16 @@ use strict;
 use warnings;
 use ExtUtils::MakeMaker;
 
+sub MY::postamble {
+    return <<EOT;
+authortest:
+\tRELEASE_TESTING=1 prove -l xt"
+
+testhere:	# Run the tests from lib rather than blib
+\tperl -Ilib -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t
+EOT
+} #postamble
+
 WriteMakefile(
     NAME             => 'Text::PerlPP',
     AUTHOR           => q{Christopher White <cxwembedded@gmail.com>},

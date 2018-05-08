@@ -4,7 +4,11 @@ use strict;
 use warnings;
 use Test::More;
 use IPC::Run3;
-use constant CMD => 'perl -Ilib bin/perlpp';
+use Text::PerlPP;
+use constant CMD => "perl -I$Text::PerlPP::INCPATH " .
+	( $Text::PerlPP::INCPATH =~ m{blib/lib} ?
+		$Text::PerlPP::INCPATH =~ s{blib/lib\b.*}{blib/script/perlpp}r :
+		'bin/perlpp');
 
 my @testcases=(
 	# [$cmdline_options, $in (the script), $out_re (expected output),
