@@ -4,13 +4,13 @@ use strict;
 use warnings;
 use Test::More tests => 1;
 use IPC::Run3;
-use constant CMD => 'perl -Ilib bin/perlpp perlpp.pl';
+use constant CMD => 'perl -Ilib bin/perlpp lib/Text/PerlPP.pm';
 
 my ($wholefile, $out);
 
 $wholefile = do {
 	my $fh;
-	open($fh, '<', 'perlpp.pl') or die("Couldn't open");
+	open($fh, '<', 'lib/Text/PerlPP.pm') or die("Couldn't open");
 	local $/;
 	<$fh>;
 };

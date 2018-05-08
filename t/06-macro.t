@@ -6,9 +6,10 @@ use Test::More 'no_plan';
 use IPC::Run3;
 use constant CMD => 'perl -Ilib bin/perlpp';
 
-(my $whereami = __FILE__) =~ s/macro\.t$//;
+(my $whereami = __FILE__) =~ s/06-macro\.t$//;
 my $incfn = '\"' . $whereami . 'included.txt\"';
 	# escape the quotes for the shell
+diag "Including from $incfn\n";
 
 my @testcases=(
 	# [$cmdline_options, $in (the script), $out_re (expected output),

@@ -6,8 +6,9 @@ use Test::More;
 use IPC::Run3;
 use constant CMD => 'perl -Ilib bin/perlpp';
 
-(my $whereami = __FILE__) =~ s/include\.t$//;
+(my $whereami = __FILE__) =~ s/04-include\.t$//;
 my $incfn = '"' . $whereami . 'included.txt"';
+diag "Including from $incfn\n";
 
 my ($in, $out, $err);
 

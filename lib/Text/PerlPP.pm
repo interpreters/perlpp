@@ -287,7 +287,7 @@ sub ShellOut {		# Run an external command
 	print(
 		qq{do {
 			my \$output = qx${cmd};
-			my \$status = PerlPP::GetStatusReport(\$?, \$!);
+			my \$status = Text::PerlPP::GetStatusReport(\$?, \$!);
 			if(\$status) {
 				$error_response("perlpp: command '" . ${cmd} . "' failed: \${status}; invoked");
 			} else {
@@ -338,7 +338,7 @@ sub OnOpening {
 		}
 
 		if ( $plainMode == OBMODE_CAPTURE ) {
-			print PrepareString( $plain ) . " . do { PerlPP::StartOB(); ";
+			print PrepareString( $plain ) . " . do { Text::PerlPP::StartOB(); ";
 			StartOB( $plainMode );					# wrap the inset in a capturing mode
 		} else {
 			print "print " . PrepareString( $plain ) . ";\n";
@@ -376,7 +376,7 @@ sub OnClosing {
 		}
 
 		if ( GetModeOfOB() == OBMODE_CAPTURE ) {		# if the inset is wrapped
-			print EndOB() . " PerlPP::EndOB(); } . ";	# end of do { .... } statement
+			print EndOB() . " Text::PerlPP::EndOB(); } . ";	# end of do { .... } statement
 			$nextMode = OBMODE_CAPTURE;				# back to capturing
 		}
 	}
