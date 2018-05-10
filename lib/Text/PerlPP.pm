@@ -152,6 +152,7 @@ sub GetModeOfOB {
 
 sub DQuoteString {	# wrap $_[0] in double-quotes, escaped properly
 	# Not currently used by PerlPP, but provided for use by scripts.
+    # TODO? inject into the generated script?
 	my $s = shift;
 
 	$s =~ s{\\}{\\\\}g;

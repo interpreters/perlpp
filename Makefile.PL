@@ -19,6 +19,7 @@ WriteMakefile(
     VERSION_FROM     => 'lib/Text/PerlPP.pm',
     ABSTRACT_FROM    => 'lib/Text/PerlPP.pm',
     LICENSE          => 'mit',
+
     EXE_FILES       => [ 'bin/perlpp' ],
     MIN_PERL_VERSION => '5.010',
     CONFIGURE_REQUIRES => {
@@ -26,6 +27,7 @@ WriteMakefile(
     },
     BUILD_REQUIRES => {
         'Test::More' => '0',
+	'App::FatPacker' => '0',
     },
     PREREQ_PM => {
         'Pod::Usage'       => '0',
