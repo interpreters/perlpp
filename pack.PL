@@ -2,15 +2,19 @@
 # pack.PL: fatpack perlpp
 # Copyright (c) 2018 Chris White.  Licensed MIT.
 
+use strict;
+use warnings;
+
 #############################
 # Custom packer that will only pack Text::PerlPP and Getopt::Long.
 # This is used so that the packed version doesn't have OS-specific
 # dependencies.
 
 package MyPacker;
+use strict;
+use warnings;
+
 use parent 'App::FatPacker';
-use File::Spec::Unix;
-use File::Find;
 
 sub collect_files {
   my ($self, $dir, $files) = @_;
@@ -40,14 +44,44 @@ do {
     open STDOUT, '>&', $savedstdout;                # restore stdout
 };
 
-# TODO clean up, and move the Text::PerlPP pod where pod2usage can find it
+# Clean up, and move the Text::PerlPP pod where pod2usage can find it
 
-do {
-    open my $fh, '>', 'blib/perlpp-packed';
-    print $fh $packed;
-    close $fh;
-};
+my @lines;          # For the source
+my @podlines;       # For the POD we're going to move
 
-print "Done packing\n";
+my ($in_getopt, $in_text, $in_doc);
+open my $iter, '<', \$packed;
+
+while(<$iter>) {
+    chomp;
+    s/\s+$//;
+
+    $in_getopt = m{fatpacked\S+Getopt/Long} .. m{^GETOPT_LONG};
+    $in_text = m{fatpacked\S+Text/PerlPP} .. m{^TEXT_PERLPP};
+    $in_doc = /^  =head1 NAME/ .. /^  =cut/;
+        # have to test indentation level because the POD for Getopt::Long
+        # includes a quoted POD sample
+
+    #print STDERR "$in_getopt\t$in_text\t$in_doc\t$_\n";
+
+    next if $in_getopt && $in_doc;      # no POD for Getopt::Long
+    if($in_text && $in_doc && ($in_text !~ /E0$/)) {
+        s/^  //;
+        push @podlines, $_;
+    } else {
+        push @lines, $_ if $_;
+    }
+}
+close $iter;
+undef $packed;
+
+# Output in the appropriate order
+open my $fh, '>', 'blib/perlpp';
+print $fh "$_\n" for @lines;
+print $fh "__END__\n=pod\n\n";
+print $fh "$_\n" for @podlines;
+close $fh;
+
+print STDERR "Done packing\n";
 
 # vi: set ts=4 sts=4 sw=4 et ai: #

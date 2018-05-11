@@ -5,10 +5,17 @@ use warnings;
 use Test::More;
 use IPC::Run3;
 use Text::PerlPP;
+# Ugly hack.  Find the perlpp binary we're testing.  TODO handle this a
+# completely different way!
 use constant CMD => "perl -I$Text::PerlPP::INCPATH " .
-	( $Text::PerlPP::INCPATH =~ m{blib/lib} ?
-		$Text::PerlPP::INCPATH =~ s{blib/lib\b.*}{blib/script/perlpp}r :
-		'bin/perlpp');
+	(
+		$ENV{PERLPP_FILENAME} ||
+		(
+			$Text::PerlPP::INCPATH =~ m{blib/lib} ?
+			$Text::PerlPP::INCPATH =~ s{blib/lib\b.*}{blib/script/perlpp}r :
+			'bin/perlpp'
+		)
+	);
 diag "perlpp command: " . CMD;
 
 my ($in, $out, $err);

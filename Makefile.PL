@@ -10,6 +10,10 @@ authortest:
 
 testhere:	# Run the tests from lib rather than blib
 \tperl -Ilib -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t
+
+testpacked: pack    # Test the packed version
+\texport PERLPP_FILENAME="blib/perlpp"; \$(MAKE) testhere
+# TODO figure out how to not include -Ilib
 EOT
 } #postamble
 
