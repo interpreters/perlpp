@@ -1,18 +1,14 @@
 #!/usr/bin/env perl -W
-# Test running perlpp on itself - nothing should change
+# Test running perlpp on itself - nothing should change.
+# Always uses the Text/PerlPP.pm in lib, for simplicity.
 use strict;
 use warnings;
 use Test::More tests => 1;
 use IPC::Run3;
-use Text::PerlPP;
 
-# Run perlpp with its own source as the input file
-my $CMD = "perl -I$Text::PerlPP::INCPATH " .
-	( $Text::PerlPP::INCPATH =~ m{blib/lib} ?
-		$Text::PerlPP::INCPATH =~ s{blib/lib\b.*}{blib/script/perlpp}r :
-		'bin/perlpp') .
-	" $INC{'Text/PerlPP.pm'}";
-diag "command: $CMD";
+use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp')
+	. ' lib/Text/PerlPP.pm';
+diag 'idempotency-test command: ' . CMD;
 
 my ($wholefile, $out);
 
@@ -23,8 +19,7 @@ $wholefile = do {
 	<$fh>;
 };
 
-run3 $CMD, undef, \$out;
+run3 CMD, undef, \$out;
 is($out, $wholefile);
 
 # vi: set ts=4 sts=0 sw=4 noet ai: #
-

@@ -4,11 +4,7 @@ use strict;
 use warnings;
 use Test::More;
 use IPC::Run3;
-use Text::PerlPP;
-use constant CMD => "perl -I$Text::PerlPP::INCPATH " .
-	( $Text::PerlPP::INCPATH =~ m{blib/lib} ?
-		$Text::PerlPP::INCPATH =~ s{blib/lib\b.*}{blib/script/perlpp}r :
-		'bin/perlpp');
+use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
 
 (my $whereami = __FILE__) =~ s/04-include\.t$//;
 my $incfn = '"' . $whereami . 'included.txt"';
@@ -47,4 +43,3 @@ for my $lrTest (@testcases) {
 } # foreach test
 
 # vi: set ts=4 sts=0 sw=4 noet ai: #
-

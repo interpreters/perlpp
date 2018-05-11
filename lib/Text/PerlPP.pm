@@ -5,14 +5,6 @@ package Text::PerlPP;
 
 our $VERSION = '0.3.1';
 
-# Where we were included from.  Primarily for the benefit of test code.
-our $INCPATH;
-BEGIN {
-	$INCPATH = 'Text/PerlPP.pm';
-	$INCPATH = ($INC{$INCPATH} =~ s/$INCPATH$//r);
-	$INCPATH =~ s{[/\\]$}{} if length $INCPATH > 1;
-}
-
 use 5.010;		# provides // - http://perldoc.perl.org/perl5100delta.html
 use strict;
 use warnings;

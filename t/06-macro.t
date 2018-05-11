@@ -5,10 +5,7 @@ use warnings;
 use Test::More 'no_plan';
 use IPC::Run3;
 use Text::PerlPP;
-use constant CMD => "perl -I$Text::PerlPP::INCPATH " .
-	( $Text::PerlPP::INCPATH =~ m{blib/lib} ?
-		$Text::PerlPP::INCPATH =~ s{blib/lib\b.*}{blib/script/perlpp}r :
-		'bin/perlpp');
+use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
 
 (my $whereami = __FILE__) =~ s/06-macro\.t$//;
 my $incfn = '\"' . $whereami . 'included.txt\"';

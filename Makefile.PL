@@ -8,12 +8,13 @@ sub MY::postamble {
 authortest:
 \tRELEASE_TESTING=1 prove -l xt"
 
-testhere:	# Run the tests from lib rather than blib
+testhere:   # Run the tests from lib rather than blib
+\texport PERLPP_CMD="perl -Ilib bin/perlpp"; \\
 \tperl -Ilib -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t
 
 testpacked: pack    # Test the packed version
-\texport PERLPP_FILENAME="blib/perlpp"; \$(MAKE) testhere
-# TODO figure out how to not include -Ilib
+\texport PERLPP_NOUSE=1 PERLPP_CMD="perl blib/perlpp"; \\
+\tperl -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t
 EOT
 } #postamble
 
@@ -31,7 +32,7 @@ WriteMakefile(
     },
     BUILD_REQUIRES => {
         'Test::More' => '0',
-	'App::FatPacker' => '0',
+        'App::FatPacker' => '0',
     },
     PREREQ_PM => {
         'Pod::Usage'       => '0',
@@ -40,3 +41,4 @@ WriteMakefile(
     dist  => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean => { FILES => 'Text-PerlPP-*' },
 );
+# vi: set ts=4 sts=4 sw=4 et ai: #

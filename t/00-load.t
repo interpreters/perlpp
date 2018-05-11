@@ -4,11 +4,15 @@ use strict;
 use warnings;
 use Test::More;
 
-plan tests => 1;
-
 BEGIN {
-    use_ok( 'Text::PerlPP' ) || print "Bail out!\n";
+    if($ENV{PERLPP_NOUSE} || 0) {
+        plan skip_all => 'Loading not tested in this configuration (PERLPP_NOUSE)';
+    } else {
+        plan tests => 1;
+        use_ok( 'Text::PerlPP' ) || print "Bail out!\n";
+        diag("Included from $INC{'Text/PerlPP.pm'}");
+    }
 }
 
-diag( "Testing Text::PerlPP $Text::PerlPP::VERSION, Perl $], $^X" );
-diag("Included from $Text::PerlPP::INCPATH");
+done_testing();
+# vi: set ts=4 sts=4 sw=4 et ai: #
