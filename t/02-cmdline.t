@@ -132,4 +132,3 @@ for my $lrTest (@testcases) {
 # TODO test -o / --output, and processing input from files rather than stdin
 
 # vi: set ts=4 sts=0 sw=4 noet ai: #
-
