@@ -39,6 +39,6 @@ WriteMakefile(
         'Getopt::Long'     => '2.50',   # Per issue #17
     },
     dist  => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
-    clean => { FILES => 'Text-PerlPP-*' },
+    clean => { FILES => 'Text-PerlPP-* fatlib' },
 );
 # vi: set ts=4 sts=4 sw=4 et ai: #

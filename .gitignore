@@ -3,6 +3,9 @@
 /fatlib
 /stuff
 
+# Dist
+/Text-PerlPP*
+
 # Editor
 *.bak
 *~

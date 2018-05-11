@@ -5,6 +5,7 @@ LICENSE
 Makefile.PL
 MANIFEST			This list of files
 MANIFEST.SKIP
+pack.PL				Script to make the packed version
 README
 README.md			The tutorial
 t/00-load.t
