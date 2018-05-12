@@ -1,0 +1,23 @@
+bin/perlpp			The command-line invoker
+Changes
+lib/Text/PerlPP.pm		The main code and perldoc
+LICENSE
+Makefile.PL
+MANIFEST			This list of files
+MANIFEST.SKIP
+pack.PL				Script to make the packed version
+README
+README.md			The tutorial
+t/00-load.t
+t/01-basic.t
+t/01-readme.t
+t/02-cmdline.t
+t/03-idempotency.t
+t/04-include.t
+t/05-external-command.t
+t/06-macro.t
+t/07-invalid.t
+t/a.txt
+t/b.txt
+t/c.txt
+t/included.txt

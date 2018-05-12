@@ -1,17 +1,15 @@
-#!/usr/bin/env perl
-# PerlPP: Perl preprocessor.  See documentation after __END__.
+#!perl
+# PerlPP: Perl preprocessor.  See the perldoc for usage.
 
-# Some info about scoping in Perl:
-# http://darkness.codefu.org/wordpress/2003/03/perl-scoping/
+package Text::PerlPP;
 
-package PerlPP;
-our $VERSION = '0.3.0';
+our $VERSION = '0.3.1';
 
-use v5.10;		# provides // - http://perldoc.perl.org/perl5100delta.html
+use 5.010;		# provides // - http://perldoc.perl.org/perl5100delta.html
 use strict;
 use warnings;
 
-use Getopt::Long;
+use Getopt::Long 2.50 qw(GetOptionsFromArray);
 use Pod::Usage;
 
 # === Constants ===========================================================
@@ -67,12 +65,12 @@ my @Postprocessors = ();
 my %Prefixes = ();			# set by ExecuteCommand; used by PrepareString
 
 # -D definitions.  -Dfoo creates $Defs{foo}==true and $Defs_repl_text{foo}==''.
-my %Defs = ();				# Command-line -D arguments
+our %Defs = ();				# Command-line -D arguments
 my $Defs_RE = false;		# Regex that matches any -D name
 my %Defs_repl_text = ();	# Replacement text for -D names
 
 # -s definitions.
-my %Sets = ();				# Command-line -s arguments
+our %Sets = ();				# Command-line -s arguments
 
 # Output-buffer stack
 my @OutputBuffers = ();		# each entry is a two-element array
@@ -146,6 +144,7 @@ sub GetModeOfOB {
 
 sub DQuoteString {	# wrap $_[0] in double-quotes, escaped properly
 	# Not currently used by PerlPP, but provided for use by scripts.
+	# TODO? inject into the generated script?
 	my $s = shift;
 
 	$s =~ s{\\}{\\\\}g;
@@ -289,7 +288,7 @@ sub ShellOut {		# Run an external command
 	print(
 		qq{do {
 			my \$output = qx${cmd};
-			my \$status = PerlPP::GetStatusReport(\$?, \$!);
+			my \$status = Text::PerlPP::GetStatusReport(\$?, \$!);
 			if(\$status) {
 				$error_response("perlpp: command '" . ${cmd} . "' failed: \${status}; invoked");
 			} else {
@@ -340,7 +339,7 @@ sub OnOpening {
 		}
 
 		if ( $plainMode == OBMODE_CAPTURE ) {
-			print PrepareString( $plain ) . " . do { PerlPP::StartOB(); ";
+			print PrepareString( $plain ) . " . do { Text::PerlPP::StartOB(); ";
 			StartOB( $plainMode );					# wrap the inset in a capturing mode
 		} else {
 			print "print " . PrepareString( $plain ) . ";\n";
@@ -378,7 +377,7 @@ sub OnClosing {
 		}
 
 		if ( GetModeOfOB() == OBMODE_CAPTURE ) {		# if the inset is wrapped
-			print EndOB() . " PerlPP::EndOB(); } . ";	# end of do { .... } statement
+			print EndOB() . " Text::PerlPP::EndOB(); } . ";	# end of do { .... } statement
 			$nextMode = OBMODE_CAPTURE;				# back to capturing
 		}
 	}
@@ -504,7 +503,7 @@ my %CMDLINE_OPTS = (
 	DEFS => ['D','|define:s%'],		# In %D, and text substitution
 	EVAL => ['e','|eval=s', ''],
 	# -h and --help reserved
-	# INPUT_FILENAME assigned by parse_command_line_into()
+	# INPUT_FILENAME assigned by parse_command_line()
 	KEEP_GOING => ['k','|keep-going',false],
 	# --man reserved
 	OUTPUT_FILENAME => ['o','|output=s', ""],
@@ -514,11 +513,12 @@ my %CMDLINE_OPTS = (
 	# -? reserved
 );
 
-sub parse_command_line_into {
-	# Takes reference to hash to populate.  Fills in that hash with the
-	# values from the command line, keyed by the keys in %CMDLINE_OPTS.
+sub parse_command_line {
+	# Takes reference to arg list, and reference to hash to populate.
+	# Fills in that hash with the values from the command line, keyed
+	# by the keys in %CMDLINE_OPTS.
 
-	my $hrOptsOut = shift;
+	my ($lrArgs, $hrOptsOut) = @_;
 
 	# Easier syntax for checking whether optional args were provided.
 	# Syntax thanks to http://www.perlmonks.org/?node_id=696592
@@ -534,16 +534,20 @@ sub parse_command_line_into {
 	);
 
 	# Get options
-	GetOptions($hrOptsOut,				# destination hash
-		'usage|?', 'h|help', 'man',		# options we handle here
+	GetOptionsFromArray($lrArgs, $hrOptsOut,		# destination hash
+		'usage|?', 'h|help', 'man',					# options we handle here
 		map { $_->[0] . $_->[1] } values %CMDLINE_OPTS,		# options strs
 		)
-	or pod2usage(-verbose => 0, -exitval => EXIT_PARAM_ERR);	# unknown opt
+	or pod2usage(-verbose => 0, -exitval => EXIT_PARAM_ERR, -input => __FILE__);
+		# unknown opt
 
 	# Help, if requested
-	pod2usage(-verbose => 0, -exitval => EXIT_PROC_ERR) if have('usage');
-	pod2usage(-verbose => 1, -exitval => EXIT_PROC_ERR) if have('h');
-	pod2usage(-verbose => 2, -exitval => EXIT_PROC_ERR) if have('man');
+	pod2usage(-verbose => 0, -exitval => EXIT_PROC_ERR, -input => __FILE__)
+		if have('usage');
+	pod2usage(-verbose => 1, -exitval => EXIT_PROC_ERR, -input => __FILE__)
+		if have('h');
+	pod2usage(-verbose => 2, -exitval => EXIT_PROC_ERR, -input => __FILE__)
+		if have('man');
 
 	# Map the option names from GetOptions back to the internal names we use,
 	# e.g., $hrOptsOut->{EVAL} from $hrOptsOut->{e}.
@@ -560,11 +564,12 @@ sub parse_command_line_into {
 	# Process other arguments.  TODO? support multiple input filenames?
 	$hrOptsOut->{INPUT_FILENAME} = $ARGV[0] // "";
 
-} #parse_command_line_into()
+} #parse_command_line()
 
 # === Main ================================================================
 sub Main {
-	parse_command_line_into \%Opts;
+	my $lrArgv = shift // [];
+	parse_command_line $lrArgv, \%Opts;
 
 	if($Opts{PRINT_VERSION}) {
 		print "PerlPP version $VERSION\n";
@@ -676,8 +681,7 @@ sub Main {
 	return EXIT_OK;
 } #Main()
 
-exit Main( @ARGV );
-
+1;
 __END__
 # ### Documentation #######################################################
 
@@ -687,11 +691,11 @@ __END__
 
 =head1 NAME
 
-PerlPP: Perl preprocessor
+Text::PerlPP - Perl preprocessor: process Perl code within any text file
 
 =head1 USAGE
 
-perl perlpp.pl [options] [--] [filename]
+	perlpp [options] [--] [filename]
 
 If no [filename] is given, input will be read from stdin.
 
@@ -715,14 +719,14 @@ The B<name> will also be replaced with the B<value> in the text of the file.
 If B<value> cannot be evaluated, no substitution is made for B<name>.
 
 If you omit the B<< =value >>, the value will be the constant C<true>
-(see L</"The generated script">, below), and no text substitution
+(see L<"The generated script"|/"THE GENERATED SCRIPT">, below), and no text substitution
 will be performed.
 
-This also saves the value, or C<undef>, in the generation-time
-hash C<< %Defs >>.  This can be used, e.g., to select include filenames
-depending on B<-D> arguments.
+This also saves the value, or C<undef>, in the generation-time hash
+C<< %Text::PerlPP::Defs >>.  This can be used, e.g., to select include
+filenames depending on B<-D> arguments.
 
-See L</"Definitions">, below, for more information.
+See L<"Definitions"|/"DEFINITIONS">, below, for more information.
 
 =item -e, --eval B<statement>
 
@@ -752,7 +756,7 @@ Does not substitute text in the body of the document;
 
 =item *
 
-Saves into C<< %Sets >> at generation time; and
+Saves into C<< %Text::PerlPP::Sets >> at generation time; and
 
 =item *
 
@@ -772,11 +776,11 @@ Usage help, printed to STDOUT.
 
 Shows just the usage summary
 
-=back
-
 =item --version
 
 Show the version number of perlpp
+
+=back
 
 =head1 DEFINITIONS
 
@@ -822,14 +826,74 @@ On the plus side, requring v5.10 gives you C<//>
 (the defined-or operator) and the builtin C<say>.
 The preamble also keeps you safe from some basic issues.
 
-=head1 COPYRIGHT
+=head1 BUGS
 
-Code at L<https://github.com/d-ash/perlpp>.
-Distributed under MIT license.
-By Andrey Shubin (d-ash at Github; L<andrey.shubin@gmail.com>) and
+Please report any bugs or feature requests through GitHub, via
+L<https://github.com/interpreters/perlpp/issues>.
+
+=head1 SUPPORT
+
+You can find documentation for this module with the perldoc command.
+
+	perldoc Text::PerlPP
+
+You can also look for information at:
+
+=over 4
+
+=item * AnnoCPAN: Annotated CPAN documentation
+
+L<http://annocpan.org/dist/Text-PerlPP>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/d/Text-PerlPP>
+
+=item * Search CPAN
+
+L<http://search.cpan.org/dist/Text-PerlPP/>
+
+=back
+
+=head1 ALTERNATIVES
+
+Turns out there are about 2^googol modules that do similar things.  We think
+this one works pretty nicely, but here are some others in case you disagree.
+In no particular order: L<Text::EP3>, L<Text::Template>, L<Basset::Template>,
+L<ExtUtils::PerlPP>, L<HTML::EP>, L<PML>, L<Preproc::Tiny>, L<ePerl>, L<iperl>.
+
+=head1 AUTHORS
+
+Andrey Shubin (d-ash at Github; L<andrey.shubin@gmail.com>) and
 Chris White (cxw42 at Github; L<cxwembedded@gmail.com>).
 
-=cut
+=head1 LICENSE AND COPYRIGHT
 
-# vi: set ts=4 sts=0 sw=4 noet ai fo-=o: #
+Copyright 2013-2018 Andrey Shubin and Christopher White.
+
+This program is distributed under the MIT (X11) License:
+L<http://www.opensource.org/licenses/mit-license.php>
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+=cut
 

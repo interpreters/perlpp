@@ -1,0 +1,77 @@
+Text-PerlPP - a Perl preprocessor
+
+Translates text files with embedded Perl code to plain text files.
+See README.md for details.  A simple example:
+
+    <? my $x = 42; ?><?! echo Hello, World! ?><?= $x ?>
+
+will output
+
+    Hello, World!
+    42
+
+<? ... ?> is a Perl code chunk, <?! ... ?> runs an external command, and
+<?= ... ?> prints a Perl expression.  There are more commands, listed in
+README.md.
+
+REQUIRES
+
+Perl 5.10+ and Getopt::Long 2.50.  There is a fatpacked version that
+already includes Getopt::Long in the GitHub releases archive:
+https://github.com/interpreters/perlpp/releases
+
+INSTALLATION
+
+Easy installation, using App::cpanminus:
+
+    cpanm Text::PerlPP
+
+Easy installation, using the release from GitHub:
+
+    - Copy the release file to a directory in your PATH
+
+Slightly less easy installation, using ExtUtils::MakeMaker:
+
+    - Unpack the tarball
+    - In the resulting directory, run the following commands:
+
+        perl Makefile.PL
+        make
+        make test
+        make install
+
+Yet another alternative way of installing
+
+    - Copy lib/Text/PerlPP.pm to a directory in your @INC
+    - Copy bin/perlpp to a directory in your PATH.
+
+SUPPORT AND DOCUMENTATION
+
+After installing, you can find documentation for this module with the
+perldoc command.
+
+    perldoc Text::PerlPP
+
+You can also look for information at:
+
+    GitHub (report bugs here)
+        https://github.com/interpreters/perlpp
+
+    AnnoCPAN, Annotated CPAN documentation
+        http://annocpan.org/dist/Text-PerlPP
+
+    CPAN Ratings
+        http://cpanratings.perl.org/d/Text-PerlPP
+
+    Search CPAN
+        http://search.cpan.org/dist/Text-PerlPP/
+
+LICENSE AND COPYRIGHT
+
+Copyright 2013-2018 Andrey Shubin and Christopher White.
+
+This program is distributed under the MIT (X11) License:
+http://www.opensource.org/licenses/mit-license.php
+
+See LICENSE for full details.
+

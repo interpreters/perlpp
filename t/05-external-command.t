@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Test::More;
 use IPC::Run3;
-use constant CMD => 'perl perlpp.pl';
+use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
 
 (my $whereami = __FILE__) =~ s/macro\.t$//;
 my $incfn = '\"' . $whereami . 'included.txt\"';
@@ -54,4 +54,3 @@ for my $lrTest (@testcases) {
 # TODO test -o / --output, and processing input from files rather than stdin
 
 # vi: set ts=4 sts=0 sw=4 noet ai: #
-

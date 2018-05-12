@@ -4,7 +4,8 @@ use strict;
 use warnings;
 use Test::More;
 use IPC::Run3;
-use constant CMD => 'perl perlpp.pl';
+use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
+diag "perlpp command: " . CMD;
 
 my ($in, $out, $err);
 
@@ -38,4 +39,3 @@ for my $lrTest (@testcases) {
 } # foreach test
 
 # vi: set ts=4 sts=0 sw=4 noet ai: #
-
