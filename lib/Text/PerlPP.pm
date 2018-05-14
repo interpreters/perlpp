@@ -535,21 +535,23 @@ sub parse_command_line {
 		keys %CMDLINE_OPTS
 	);
 
+	my %docs = (-input => (($0 =~ /\bperlpp$/) ? $0 : __FILE__));
+		# The main POD is in the perlpp script at the present time.
+		# However, if we're not running from perlpp, we show the
+		# small POD below, which links to `perldoc perlpp`.
+
 	# Get options
 	GetOptionsFromArray($lrArgs, $hrOptsOut,		# destination hash
 		'usage|?', 'h|help', 'man',					# options we handle here
 		map { $_->[0] . $_->[1] } values %CMDLINE_OPTS,		# options strs
 		)
-	or pod2usage(-verbose => 0, -exitval => EXIT_PARAM_ERR, -input => __FILE__);
+	or pod2usage(-verbose => 0, -exitval => EXIT_PARAM_ERR, %docs);
 		# unknown opt
 
 	# Help, if requested
-	pod2usage(-verbose => 0, -exitval => EXIT_PROC_ERR, -input => __FILE__)
-		if have('usage');
-	pod2usage(-verbose => 1, -exitval => EXIT_PROC_ERR, -input => __FILE__)
-		if have('h');
-	pod2usage(-verbose => 2, -exitval => EXIT_PROC_ERR, -input => __FILE__)
-		if have('man');
+	pod2usage(-verbose => 0, -exitval => EXIT_PROC_ERR, %docs) if have('usage');
+	pod2usage(-verbose => 1, -exitval => EXIT_PROC_ERR, %docs) if have('h');
+	pod2usage(-verbose => 2, -exitval => EXIT_PROC_ERR, %docs) if have('man');
 
 	# Map the option names from GetOptions back to the internal names we use,
 	# e.g., $hrOptsOut->{EVAL} from $hrOptsOut->{e}.
@@ -699,9 +701,9 @@ Text::PerlPP - Perl preprocessor: process Perl code within any text file
 	use Text::PerlPP;
 	Text::PerlPP::Main(\@ARGV);
 
-You can pass any array reference to C<Main()>.  The array you provide
-may be modified by PerlPP.  See L</README.md> or the documentation
-for L<perlpp> for details of the options and input format.
+You can pass any array reference to C<Main()>.  The array you provide may be
+modified by PerlPP.  See L<README.md> or L<perldoc perlpp|perlpp> for details
+of the options and input format.
 
 =head1 BUGS
 
