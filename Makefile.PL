@@ -33,6 +33,7 @@ WriteMakefile(
     BUILD_REQUIRES => {
         'Test::More' => '0',
         'App::FatPacker' => '0',
+        'IPC::Run3' => '0',
     },
     PREREQ_PM => {
         'Pod::Usage'       => '0',
