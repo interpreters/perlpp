@@ -11,6 +11,7 @@
 *~
 ~*
 *.swp
+*.tmp
 
 # from GitHub's perl .gitignore:
 !Build/
@@ -51,3 +52,6 @@ inc/
 
 # Capture::Tiny
 DEBUG*
+
+# App::FatPacker
+*.trace

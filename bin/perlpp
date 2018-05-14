@@ -3,4 +3,326 @@
 #     perl -Ilib bin/perlpp
 use strict; use warnings; use Text::PerlPP;
 exit(Text::PerlPP::Main(\@ARGV));
-# vi: set ft=perl: #
+__END__
+# ### Documentation #######################################################
+
+=pod
+
+=encoding UTF-8
+
+=head1 NAME
+
+perlpp - Perl preprocessor: process Perl code within any text file
+
+=head1 USAGE
+
+	perlpp [options] [--] [filename]
+
+If no [filename] is given, input will be read from stdin.
+
+Run C<perlpp --help> for a quick reference, or C<perlpp --man> for full docs.
+
+=head1 OPTIONS
+
+=over
+
+=item -o, --output B<filename>
+
+Output to B<filename> instead of STDOUT.
+
+=item -D, --define B<name>[=B<value>]
+
+In the generated script, set C<< $D{B<name>} >> to B<value>.
+The hash C<%D> always exists, but is empty if no B<-D> options are
+given on the command line.
+
+The B<name> will also be replaced with the B<value> in the text of the file.
+If B<value> cannot be evaluated, no substitution is made for B<name>.
+
+If you omit the B<< =value >>, the value will be the constant C<true>
+(see L<"The generated script"|/"THE GENERATED SCRIPT">, below), and no text substitution
+will be performed.
+
+This also saves the value, or C<undef>, in the generation-time hash
+C<< %Text::PerlPP::Defs >>.  This can be used, e.g., to select include
+filenames depending on B<-D> arguments.
+
+See L<"Definitions"|/"DEFINITIONS">, below, for more information.
+
+=item -e, --eval B<statement>
+
+Evaluate the B<statement> before any other Perl code in the generated
+script.
+
+=item -E, --debug (or -d for backwards compatibility)
+
+Don't evaluate Perl code, just write the generated code to STDOUT.
+By analogy with the C<-E> option of gcc.
+
+=item -k, --keep-going
+
+Normally, errors in a C<!command> sequence will terminate further
+processing.  If B<-k> is given, an error message will be printed to stderr,
+but the script will keep running.
+
+=item -s, --set B<name>[=B<value>]
+
+As B<-D>, but:
+
+=over
+
+=item *
+
+Does not substitute text in the body of the document;
+
+=item *
+
+Saves into C<< %Text::PerlPP::Sets >> at generation time; and
+
+=item *
+
+Saves into C<< %S >> in the generated script.
+
+=back
+
+=item --man
+
+Full documentation, viewed in your default pager if configured.
+
+=item -h, --help
+
+Usage help, printed to STDOUT.
+
+=item -?, --usage
+
+Shows just the usage summary
+
+=item --version
+
+Show the version number of perlpp
+
+=back
+
+=head1 DEFINITIONS
+
+B<-D> and B<-s> items may be evaluated in any order ---
+do not rely on left-to-right
+evaluation in the order given on the command line.
+
+If your shell strips quotes, you may need to escape them: B<value> must
+be a valid Perl expression.  So, under bash, this works:
+
+	perlpp -D name=\"Hello, world!\"
+
+The backslashes (C<\"> instead of C<">) are required to prevent bash
+from removing the double-quotes.  Alternatively, this works:
+
+	perlpp -D 'name="Hello, World"'
+
+with the whole argument to B<-D> in single quotes.
+
+Also note that the space after B<-D> is optional, so
+
+	perlpp -Dfoo
+	perlpp -Dbar=42
+
+both work.
+
+=head1 INPUT FORMAT
+
+All text from the input is passed literally to the output unless enclosed
+in the delimiters C<< <? >> and C<< ?> >>.  This is similar to PHP's rule.
+The first character after the opening delimiter selects one of the modes,
+and defines the content between the delimiters.
+
+PerlPP first generates a script based on the input ("generation time"), then
+evaluates that script ("eval time") to produce the output.  All Perl code is
+run when the script is evaluated, except for commands notes as occuring at
+generation time.
+
+For double-quotes adjacent to the delimiters, add whitespace between
+the quote and the delimiter.  For example, use C<< <? " >> and C<< " ?> >>
+instead of C<< <?" >> and C<< "?> >>.  The exception is if you want to invoke
+L<capturing|"Capturing">, described below.
+
+=head2 Modes
+
+=over
+
+=item Code mode: C<< <? arbitrary Perl code ?> >>
+
+The content is whatever Perl code you want.  It will be executed
+at evaluation time.  It is up to you to make sure things are properly
+nested.
+
+=item Echo mode: C<< <?= Perl expression ?> >>
+
+C<< <?= expr ?> >> is shorthand for C<< <? print expr ; ?> >>.
+
+=item Code mode with newline: C<< <?/ arbitrary Perl code ?> >>
+
+The same as C<< <? ?> >>, but sticks a C<print "\n";> in front of the code
+you provide.
+
+=item Comment mode: C<< <?# arbitrary text not including '?>' ?> >>
+
+Everything in a comment is ignored, suprisingly enough!
+
+=item External mode: C<< <?! command [args...] ?> >>
+
+Runs the given string using C<qx//>.  If the command fails (returns nonzero),
+execution halts unless C<-k> was given.  The stdout of the command is
+include with the rest of the output of the script.
+
+=item Command mode: C<< <?:command_name [optional args] ?> >>
+
+Runs a PerlPP command.
+
+=back
+
+=head2 PerlPP Commands
+
+=over
+
+=item C<< <?:include filename ?> >>
+
+Include the contents of the file called C<filename> at generation time.
+The included file is processed as if its contents occurred inline in the
+calling file.
+
+If the filename includes spaces, use double-quotes:
+
+	<?:include "some long filename" ?>
+
+Make sure to include the space after the closing double-quote.
+
+=item C<< <?:prefix foo bar ?> >>
+
+After the prefix command, if a word starts with C<foo>, change the C<foo>
+to C<bar>.
+
+=item C<< <?:macro some_perl_code ?> >>
+
+Run C<some_perl_code> at the time of script generation.  Whatever output
+the perl code produces will be included verbatim in the script output.
+See L</README.md> for examples.
+
+=item C preprocessor emulation
+
+The following work similarly to the corresponding functions of the
+C preprocessor: C<< <?:define NAME ?> >>, C<< <?:undef NAME ?> >>,
+C<< <?:ifdef NAME ?> >>, C<< <?:ifndef NAME ?> >>, C<< <?:else ?> >>,
+C<< <?:endif ?> >>, C<< <?:if NAME CONDITION ?> >>, and
+C<< <?:elsif NAME CONDITION ?> >> (or C<elif> or C<elseif>).
+
+=back
+
+=head2 Capturing
+
+Capturing permits you to express single-quoted strings without having to
+quote and escape.  For example, C<< <? print "?>some $text "string"<?" ; ?> >>
+outputs C<some $text "string"> literally, without substituting C<$text> and
+without the need to escape the double-quotes.  That way you don't have to
+express long blocks of text as Perl string literals.
+
+Capturing can be used anywhere a Perl string expression is valid.
+
+PerlPP commands can be nested within captured strings.  For example,
+running the script
+
+	<?= "!" . "?>foo<?= 42 ?><?" . "bar" ?>
+
+will output C<!foo42bar>.  The C<42> is generated by the nested
+C<< <?= 42 ?> >> expression.
+
+=head1 THE GENERATED SCRIPT
+
+The code you specify in the input file is in a Perl environment with the
+following definitions in place:
+
+	package PPP_foo;
+	use 5.010001;
+	use strict;
+	use warnings;
+	use constant { true => !!1, false => !!0 };
+
+where B<foo> is the input filename, if any, transformed to only include
+[A-Za-z0-9_].
+
+This preamble requires Perl 5.10.1, which perlpp itself requires.
+On the plus side, requring v5.10.1 gives you C<//>
+(the defined-or operator) and the builtin C<say>.
+The preamble also keeps you safe from some basic issues.
+
+=head1 BUGS
+
+Please report any bugs or feature requests through GitHub, via
+L<https://github.com/interpreters/perlpp/issues>.
+
+=head1 SUPPORT
+
+You can find documentation for this module with the perldoc command.
+
+	perldoc Text::PerlPP
+
+You can also look for information at:
+
+=over 4
+
+=item * AnnoCPAN: Annotated CPAN documentation
+
+L<http://annocpan.org/dist/Text-PerlPP>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/d/Text-PerlPP>
+
+=item * Search CPAN
+
+L<http://search.cpan.org/dist/Text-PerlPP/>
+
+=back
+
+=head1 ALTERNATIVES
+
+Turns out there are about 2^googol modules that do similar things.  We think
+this one works pretty nicely, but here are some others in case you disagree.
+In no particular order: L<Text::EP3>, L<Text::Template>, L<Basset::Template>,
+L<ExtUtils::PerlPP>, L<HTML::EP>, L<PML>, L<Preproc::Tiny>, L<ePerl>, L<iperl>.
+
+=head1 AUTHORS
+
+Andrey Shubin (d-ash at Github; L<andrey.shubin@gmail.com>) and
+Chris White (cxw42 at Github; L<cxwembedded@gmail.com>).
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright 2013-2018 Andrey Shubin and Christopher White.
+
+This program is distributed under the MIT (X11) License:
+L<http://www.opensource.org/licenses/mit-license.php>
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+=cut
+
+# vi: set ft=perl ts=4 sts=0 sw=4 noet ai: #

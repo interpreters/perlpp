@@ -31,12 +31,13 @@ WriteMakefile(
         'ExtUtils::MakeMaker' => '0',
     },
     BUILD_REQUIRES => {
-        'Test::More' => '0',
         'App::FatPacker' => '0',
+        'IPC::Run3' => '0',
+        'Test::More' => '0',
     },
     PREREQ_PM => {
-        'Pod::Usage'       => '0',
         'Getopt::Long'     => '2.50',   # Per issue #17
+        'Pod::Usage'       => '0',
     },
     dist  => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean => { FILES => 'Text-PerlPP-* fatlib' },

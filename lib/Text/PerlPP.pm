@@ -3,9 +3,9 @@
 
 package Text::PerlPP;
 
-our $VERSION = '0.3.1';
+our $VERSION = '0.3.2';
 
-use 5.010;		# provides // - http://perldoc.perl.org/perl5100delta.html
+use 5.010001;
 use strict;
 use warnings;
 
@@ -279,13 +279,14 @@ sub GetStatusReport {
 } # GetStatusReport()
 
 sub ShellOut {		# Run an external command
-	my $cmd = shift =~ s/^\s+|\s+$//gr;		# trim leading/trailing whitespace
+	my $cmd = shift;
+	$cmd =~ s/^\s+|\s+$//g;		# trim leading/trailing whitespace
 	die "No command provided to @{[TAG_OPEN]}!...@{[TAG_CLOSE]}" unless $cmd;
 	$cmd = QuoteString $cmd;	# note: cmd is now wrapped in ''
 
 	my $error_response = ($Opts{KEEP_GOING} ? 'warn' : 'die');	# How we will handle errors
 
-	print(
+	my $block =
 		qq{do {
 			my \$output = qx${cmd};
 			my \$status = Text::PerlPP::GetStatusReport(\$?, \$!);
@@ -295,8 +296,9 @@ sub ShellOut {		# Run an external command
 				print \$output;
 			}
 		};
-		} =~ s/^\t{2}//gmr	# de-indent
-	);
+		};
+	$block =~ s/^\t{2}//gm;		# de-indent
+	print $block;
 } #ShellOut()
 
 sub OnOpening {
@@ -584,7 +586,7 @@ sub Main {
 		# $Package is not the whole name, so can start with a number.
 
 	StartOB();	# Output from here on will be included in the generated script
-	print "package PPP_${Package};\nuse 5.010;\nuse strict;\nuse warnings;\n";
+	print "package PPP_${Package};\nuse 5.010001;\nuse strict;\nuse warnings;\n";
 	print "use constant { true => !!1, false => !!0 };\n";
 
 	# Definitions
@@ -682,7 +684,6 @@ sub Main {
 } #Main()
 
 1;
-__END__
 # ### Documentation #######################################################
 
 =pod
@@ -695,172 +696,17 @@ Text::PerlPP - Perl preprocessor: process Perl code within any text file
 
 =head1 USAGE
 
-	perlpp [options] [--] [filename]
+	use Text::PerlPP;
+	Text::PerlPP::Main(\@ARGV);
 
-If no [filename] is given, input will be read from stdin.
-
-Run C<perlpp --help> for a quick reference, or C<perlpp --man> for full docs.
-
-=head1 OPTIONS
-
-=over
-
-=item -o, --output B<filename>
-
-Output to B<filename> instead of STDOUT.
-
-=item -D, --define B<name>[=B<value>]
-
-In the generated script, set C<< $D{B<name>} >> to B<value>.
-The hash C<%D> always exists, but is empty if no B<-D> options are
-given on the command line.
-
-The B<name> will also be replaced with the B<value> in the text of the file.
-If B<value> cannot be evaluated, no substitution is made for B<name>.
-
-If you omit the B<< =value >>, the value will be the constant C<true>
-(see L<"The generated script"|/"THE GENERATED SCRIPT">, below), and no text substitution
-will be performed.
-
-This also saves the value, or C<undef>, in the generation-time hash
-C<< %Text::PerlPP::Defs >>.  This can be used, e.g., to select include
-filenames depending on B<-D> arguments.
-
-See L<"Definitions"|/"DEFINITIONS">, below, for more information.
-
-=item -e, --eval B<statement>
-
-Evaluate the B<statement> before any other Perl code in the generated
-script.
-
-=item -E, --debug (or -d for backwards compatibility)
-
-Don't evaluate Perl code, just write the generated code to STDOUT.
-By analogy with the C<-E> option of gcc.
-
-=item -k, --keep-going
-
-Normally, errors in a C<!command> sequence will terminate further
-processing.  If B<-k> is given, an error message will be printed to stderr,
-but the script will keep running.
-
-=item -s, --set B<name>[=B<value>]
-
-As B<-D>, but:
-
-=over
-
-=item *
-
-Does not substitute text in the body of the document;
-
-=item *
-
-Saves into C<< %Text::PerlPP::Sets >> at generation time; and
-
-=item *
-
-Saves into C<< %S >> in the generated script.
-
-=back
-
-=item --man
-
-Full documentation, viewed in your default pager if configured.
-
-=item -h, --help
-
-Usage help, printed to STDOUT.
-
-=item -?, --usage
-
-Shows just the usage summary
-
-=item --version
-
-Show the version number of perlpp
-
-=back
-
-=head1 DEFINITIONS
-
-B<-D> and B<-s> items may be evaluated in any order ---
-do not rely on left-to-right
-evaluation in the order given on the command line.
-
-If your shell strips quotes, you may need to escape them: B<value> must
-be a valid Perl expression.  So, under bash, this works:
-
-	perlpp -D name=\"Hello, world!\"
-
-The backslashes (C<\"> instead of C<">) are required to prevent bash
-from removing the double-quotes.  Alternatively, this works:
-
-	perlpp -D 'name="Hello, World"'
-
-with the whole argument to B<-D> in single quotes.
-
-Also note that the space after B<-D> is optional, so
-
-	perlpp -Dfoo
-	perlpp -Dbar=42
-
-both work.
-
-=head1 THE GENERATED SCRIPT
-
-The code you specify in the input file is in a Perl environment with the
-following definitions in place:
-
-	package PPP_foo;
-	use 5.010;
-	use strict;
-	use warnings;
-	use constant { true => !!1, false => !!0 };
-
-where B<foo> is the input filename, if any, transformed to only include
-[A-Za-z0-9_].
-
-This preamble requires Perl 5.10, which perlpp itself requires.
-On the plus side, requring v5.10 gives you C<//>
-(the defined-or operator) and the builtin C<say>.
-The preamble also keeps you safe from some basic issues.
+You can pass any array reference to C<Main()>.  The array you provide
+may be modified by PerlPP.  See L</README.md> or the documentation
+for L<perlpp> for details of the options and input format.
 
 =head1 BUGS
 
 Please report any bugs or feature requests through GitHub, via
 L<https://github.com/interpreters/perlpp/issues>.
-
-=head1 SUPPORT
-
-You can find documentation for this module with the perldoc command.
-
-	perldoc Text::PerlPP
-
-You can also look for information at:
-
-=over 4
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/Text-PerlPP>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/Text-PerlPP>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/Text-PerlPP/>
-
-=back
-
-=head1 ALTERNATIVES
-
-Turns out there are about 2^googol modules that do similar things.  We think
-this one works pretty nicely, but here are some others in case you disagree.
-In no particular order: L<Text::EP3>, L<Text::Template>, L<Basset::Template>,
-L<ExtUtils::PerlPP>, L<HTML::EP>, L<PML>, L<Preproc::Tiny>, L<ePerl>, L<iperl>.
 
 =head1 AUTHORS
 
@@ -872,28 +718,9 @@ Chris White (cxw42 at Github; L<cxwembedded@gmail.com>).
 Copyright 2013-2018 Andrey Shubin and Christopher White.
 
 This program is distributed under the MIT (X11) License:
-L<http://www.opensource.org/licenses/mit-license.php>
-
-Permission is hereby granted, free of charge, to any person
-obtaining a copy of this software and associated documentation
-files (the "Software"), to deal in the Software without
-restriction, including without limitation the rights to use,
-copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-OTHER DEALINGS IN THE SOFTWARE.
+L<http://www.opensource.org/licenses/mit-license.php>.
+See file L</LICENSE> for the full text.
 
 =cut
 
+# vi: set ts=4 sts=0 sw=4 noet ai: #
