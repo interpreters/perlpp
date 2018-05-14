@@ -1,5 +1,5 @@
 #!/usr/bin/env perl -W
-# Tests from perlpp's README.md
+# Tests from perlpp's README.md and bin/perlpp's POD.
 use strict;
 use warnings;
 use Test::More;
@@ -10,6 +10,8 @@ my ($in, $out, $err);
 
 my @testcases=(		# In the order they are given in README.md
 	# [$in, $out, $err (if any)]
+
+	# === From README.md =====================
 	['<?x this tag is passed as is ?> because "x" is not a valid mode',
 		'<?x this tag is passed as is ?> because "x" is not a valid mode'],
 	[ 	<<'SCRIPT',
@@ -86,6 +88,9 @@ RESULT
 	],
 		# the blank line before "abcd..." is the \n after the first `?>`
 
+	# === From bin/perlpp ====================
+
+	[ '<?= "!" . "?>foo<?= 42 ?><?" . "bar" ?>', '!foo42bar' ],
 ); #@testcases
 
 plan tests => scalar @testcases;
