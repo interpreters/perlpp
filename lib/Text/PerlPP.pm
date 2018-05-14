@@ -511,7 +511,7 @@ my %CMDLINE_OPTS = (
 	OUTPUT_FILENAME => ['o','|output=s', ""],
 	SETS => ['s','|set:s%'],		# Extra data in %S, without text substitution
 	# --usage reserved
-	PRINT_VERSION => ['v','|version'],
+	PRINT_VERSION => ['v','|version+'],
 	# -? reserved
 );
 
@@ -577,6 +577,9 @@ sub Main {
 
 	if($Opts{PRINT_VERSION}) {
 		print "PerlPP version $Text::PerlPP::VERSION\n";
+		if($Opts{PRINT_VERSION} > 1) {
+			print "Script: $0\nText::PerlPP: $INC{'Text/PerlPP.pm'}\n";
+		}
 		return EXIT_OK;
 	}
 
