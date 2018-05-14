@@ -3,9 +3,9 @@
 
 package Text::PerlPP;
 
-our $VERSION = '0.3.1';
+our $VERSION = '0.3.2_1';
 
-use 5.010;		# provides // - http://perldoc.perl.org/perl5100delta.html
+use 5.010001;		# provides // - http://perldoc.perl.org/perl5100delta.html
 use strict;
 use warnings;
 
@@ -279,13 +279,14 @@ sub GetStatusReport {
 } # GetStatusReport()
 
 sub ShellOut {		# Run an external command
-	my $cmd = shift =~ s/^\s+|\s+$//gr;		# trim leading/trailing whitespace
+	my $cmd = shift;
+	$cmd =~ s/^\s+|\s+$//g;		# trim leading/trailing whitespace
 	die "No command provided to @{[TAG_OPEN]}!...@{[TAG_CLOSE]}" unless $cmd;
 	$cmd = QuoteString $cmd;	# note: cmd is now wrapped in ''
 
 	my $error_response = ($Opts{KEEP_GOING} ? 'warn' : 'die');	# How we will handle errors
 
-	print(
+	my $block =
 		qq{do {
 			my \$output = qx${cmd};
 			my \$status = Text::PerlPP::GetStatusReport(\$?, \$!);
@@ -295,8 +296,9 @@ sub ShellOut {		# Run an external command
 				print \$output;
 			}
 		};
-		} =~ s/^\t{2}//gmr	# de-indent
-	);
+		};
+	$block =~ s/^\t{2}//gm;		# de-indent
+	print $block;
 } #ShellOut()
 
 sub OnOpening {
@@ -584,7 +586,7 @@ sub Main {
 		# $Package is not the whole name, so can start with a number.
 
 	StartOB();	# Output from here on will be included in the generated script
-	print "package PPP_${Package};\nuse 5.010;\nuse strict;\nuse warnings;\n";
+	print "package PPP_${Package};\nuse 5.010001;\nuse strict;\nuse warnings;\n";
 	print "use constant { true => !!1, false => !!0 };\n";
 
 	# Definitions
@@ -807,13 +809,66 @@ Also note that the space after B<-D> is optional, so
 
 both work.
 
+=head1 INPUT FORMAT
+
+All text from the input is passed literally to the output unless enclosed
+in the delimiters C<< <? >> and C<< ?> >>.  This is similar to PHP's rule.
+The first character after the opening delimiter selects one of the modes,
+and defines the content between the delimiters.
+
+PerlPP first generates a script based on the input ("generation time"), then
+evaluates that script ("eval time") to produce the output.  All Perl code is
+run when the script is evaluated, except for commands notes as occuring at
+generation time.
+
+The modes/contents are:
+
+=over
+
+=item Code mode: C<< <? arbitrary Perl code ?> >>
+
+The content is whatever Perl code you want.  It will be executed
+at evaluation time.  It is up to you to make sure things are properly
+nested.
+
+=item Echo mode: C<< <?= Perl expression ?> >>
+
+C<< <?= expr ?> >> is shorthand for C<< <? print expr ; ?> >>.
+
+=item Code mode with newline: C<< <?/ arbitrary Perl code ?> >>
+
+The same as C<< <? ?> >>, but sticks a C<print "\n";> in front of the code
+you provide.
+
+=item Comment mode: C<< <?# arbitrary text not including '?>' ?> >>
+
+Everything in a comment is ignored, suprisingly enough!
+
+=item External mode: C<< <?! command [args...] ?> >>
+
+Runs the given string using C<qx//>.  If the command fails (returns nonzero),
+execution halts unless C<-k> was given.  The stdout of the command is
+include with the rest of the output of the script.
+
+=item Command mode: C<< <?:command_name [optional args] ?> >>
+
+Runs a PerlPP command.  Commands are:
+
+=over
+
+=item Coming soon!
+
+=back
+
+=back
+
 =head1 THE GENERATED SCRIPT
 
 The code you specify in the input file is in a Perl environment with the
 following definitions in place:
 
 	package PPP_foo;
-	use 5.010;
+	use 5.010001;
 	use strict;
 	use warnings;
 	use constant { true => !!1, false => !!0 };
@@ -821,10 +876,18 @@ following definitions in place:
 where B<foo> is the input filename, if any, transformed to only include
 [A-Za-z0-9_].
 
-This preamble requires Perl 5.10, which perlpp itself requires.
-On the plus side, requring v5.10 gives you C<//>
+This preamble requires Perl 5.10.1, which perlpp itself requires.
+On the plus side, requring v5.10.1 gives you C<//>
 (the defined-or operator) and the builtin C<say>.
 The preamble also keeps you safe from some basic issues.
+
+=head1 LIBRARY USAGE
+
+	use Text::PerlPP;
+	Text::PerlPP::Main(\@ARGV);
+
+You can pass any array reference to C<Main()>.  The array you provide
+may be modified by PerlPP.
 
 =head1 BUGS
 
@@ -897,3 +960,4 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 =cut
 
+# vi: set ts=4 sts=0 sw=4 noet ai: #
