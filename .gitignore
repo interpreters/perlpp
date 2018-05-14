@@ -51,3 +51,6 @@ inc/
 
 # Capture::Tiny
 DEBUG*
+
+# App::FatPacker
+*.trace

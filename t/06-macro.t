@@ -4,7 +4,6 @@ use strict;
 use warnings;
 use Test::More 'no_plan';
 use IPC::Run3;
-use Text::PerlPP;
 use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
 
 (my $whereami = __FILE__) =~ s/06-macro\.t$//;
