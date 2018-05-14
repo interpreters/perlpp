@@ -5,7 +5,7 @@ package Text::PerlPP;
 
 our $VERSION = '0.3.2_1';
 
-use 5.010001;		# provides // - http://perldoc.perl.org/perl5100delta.html
+use 5.010001;
 use strict;
 use warnings;
 
@@ -821,7 +821,7 @@ evaluates that script ("eval time") to produce the output.  All Perl code is
 run when the script is evaluated, except for commands notes as occuring at
 generation time.
 
-The modes/contents are:
+=head2 Modes
 
 =over
 
@@ -852,15 +852,51 @@ include with the rest of the output of the script.
 
 =item Command mode: C<< <?:command_name [optional args] ?> >>
 
-Runs a PerlPP command.  Commands are:
+Runs a PerlPP command.
+
+=back
+
+=head2 PerlPP Commands
 
 =over
 
-=item Coming soon!
+=item C<< <?:include filename ?> >>
+
+Include the contents of the file called C<filename> at generation time.
+The included file is processed as if its contents occurred inline in the
+calling file.
+
+If the filename includes spaces, use double-quotes:
+
+	<?:include "some long filename" ?>
+
+Make sure to include the space after the closing double-quote.
+
+=item C<< <?:prefix foo bar ?> >>
+
+After the prefix command, if a word starts with C<foo>, change the C<foo>
+to C<bar>.
+
+=item C<< <?:macro some_perl_code ?> >>
+
+Run C<some_perl_code> at the time of script generation.  Whatever output
+the perl code produces will be included verbatim in the script output.
+See L</README.md> for examples.
+
+=item C preprocessor emulation
+
+The following work similarly to the corresponding functions of the
+C preprocessor: C<< <?:define NAME ?> >>, C<< <?:undef NAME ?> >>,
+C<< <?:ifdef NAME ?> >>, C<< <?:ifndef NAME ?> >>, C<< <?:else ?> >>,
+C<< <?:endif ?> >>, C<< <?:if NAME CONDITION ?> >>, and
+C<< <?:elsif NAME CONDITION ?> >> (or C<elif> or C<elseif>).
 
 =back
 
-=back
+=head2 Capturing
+
+Description coming soon!  In short, C<< <? print "?>some string<?" ; ?> >>.
+That way you don't have to express long blocks of text as Perl string literals.
 
 =head1 THE GENERATED SCRIPT
 
