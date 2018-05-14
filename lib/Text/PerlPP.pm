@@ -3,13 +3,13 @@
 
 package Text::PerlPP;
 
-our $VERSION = '0.3.2';
+our $VERSION = '0.3.3_1';
 
 use 5.010001;
 use strict;
 use warnings;
 
-use Getopt::Long 2.50 qw(GetOptionsFromArray);
+use Getopt::Long 2.5 qw(GetOptionsFromArray);
 use Pod::Usage;
 
 # === Constants ===========================================================
@@ -386,7 +386,8 @@ sub OnClosing {
 	StartOB( $nextMode );							# plain text
 } #OnClosing()
 
-sub RunPerlPP {
+# Process the contents of a single file
+sub RunPerlPPOnFileContents {
 	my $contents_ref = shift;						# reference
 	my $withinTag = false;
 	my $lastPrep;
@@ -415,23 +416,47 @@ sub RunPerlPP {
 			print $1;
 			( $withinTag, $$contents_ref ) = OnOpening( $2 );
 			if ( $withinTag ) {
-				goto OPENING;
+				goto OPENING;		# $$contents_ref is the rest of the string
 			}
 		}
 	}
-	print $$contents_ref;							# tail of a plain text
 
-	if ( $withinTag ) {
-		die "Unfinished Perl inset";
+	if ( $withinTag ) {		# closer is missing at the end of the file.
+
+		$$contents_ref .= ' ';
+			# This prevents there from being a double-quote before the
+			# closer, which perlpp would read as the beginning of a capture.
+
+		$$contents_ref .= "\n;\n" if ( GetModeOfOB() == OBMODE_CODE );
+			# Add semicolons only to plain Perl statements.  Don't add them
+			# to external commands, which may not be able to handle them.
+			# In general, the code that is unclosed has to be the end of a
+			# statement.  However, we do not add semicolons for commands
+			# because some commands take perl code (`macro`), and some take
+			# non-code (`include`).
+			#
+			# If you want to include a file that ends with a partial
+			# statement, it's up to you to add the closer manually.  (You
+			# can still suppress the trailing newline using an unclosed
+			# comment.)
+
+		# Add the closer
+		$$contents_ref .= TAG_CLOSE;
+
+		goto OPENING;
 	}
+
 	if ( GetModeOfOB() == OBMODE_CAPTURE ) {
 		die "Unfinished capturing";
 	}
 
+	print $$contents_ref;							# tail of a plain text
+
 	# getting the rest of the plain text
 	print "print " . PrepareString( EndOB() ) . ";\n";
-} #RunPerlPP()
+} #RunPerlPPOnFileContents()
 
+# Process a single file
 sub ProcessFile {
 	my $fname = shift;	# "" or other false value => STDIN
 	my $wdir = "";
@@ -460,7 +485,7 @@ sub ProcessFile {
 		&$proc( \$contents );						# $contents is modified
 	}
 
-	RunPerlPP( \$contents );
+	RunPerlPPOnFileContents( \$contents );
 
 	if ( $wdir ) {
 		$WorkingDir = $wdir;
