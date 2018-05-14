@@ -67,6 +67,7 @@ sub main {
     my $packer = MyPacker->new;
     my $packed;
 
+    # ------------------------------------------
     say STDERR "Packing...";
     do {
         open my $savedstdout, '>&', STDOUT or die $!;     # save stdout
@@ -80,46 +81,46 @@ sub main {
     };
     say STDERR "...done";
 
-    # Clean up, and move the Text::PerlPP pod where pod2usage can find it
+    # ------------------------------------------
+    # Clean up the fatpacked output
 
     my @lines;          # For the source
-    my @podlines;       # For the POD we're going to move
 
-    my ($in_getopt, $in_text, $in_doc);
+    my $in_doc;
 
     say STDERR "Cleanup...";
     open my $iter, '<', \$packed;
 
+    # Force the shebang for convenience in distributing the packed version
+    if(defined(my $line = <$iter>)) {
+        chomp $line;
+        $line =~ s{^#!.*$}{#!/usr/bin/env perl};
+        push @lines, $line;
+    }
+
+    # Strip fatpacked POD to save space.
     while(<$iter>) {
         chomp;
         s/\s+$//;
 
-        $in_getopt = m{fatpacked\S+Getopt/Long} .. m{^GETOPT_LONG};
-        $in_text = m{fatpacked\S+Text/PerlPP} .. m{^TEXT_PERLPP};
-        $in_doc = /^  =head1 NAME/ .. /^  =cut/;
+        $in_doc = /^  (=pod|=head1 NAME)/ .. /^  =cut/;
             # have to test indentation level because the POD for Getopt::Long
-            # includes a quoted POD sample
+            # includes a quoted POD sample, which we don't want to detect,
+            # and because the bin/perlpp POD we want to keep is not indented.
 
-        #print STDERR "$in_getopt\t$in_text\t$in_doc\t$_\n";
-
-        next if $in_getopt && $in_doc;      # no POD for Getopt::Long
-        if($in_text && $in_doc && ($in_text !~ /E0$/)) {
-            s/^  //;
-            push @podlines, $_;
-        } else {
-            push @lines, $_ if $_;
-        }
+        push @lines, $_ unless $in_doc;     # no embedded POD
     }
     close $iter;
     undef $packed;
     say STDERR "...done";
 
-    # Output in the appropriate order
+    # ------------------------------------------
+    # Output in the appropriate order.  This is a separate pass from the
+    # cleanup for historical reasons.
+
     say STDERR "Generating blib/perlpp...";
     open my $fh, '>', 'blib/perlpp';
-    print $fh "$_\n" for @lines;
-    print $fh "__END__\n=pod\n\n";
-    print $fh "$_\n" for @podlines;
+    say $fh $_ for @lines;
     close $fh;
 
     print STDERR "Done packing\n";
