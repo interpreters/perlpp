@@ -14,7 +14,7 @@ Installation
 ------------
 
 Easy way #1: `cpanm Text::PerlPP`
-(using [cpanminus](https://metacpan.org/pod/App::cpanminus).
+(using [cpanminus](https://metacpan.org/pod/App::cpanminus)).
 
 Easy way #2: copy the `perlpp` file from the
 [latest release](https://github.com/interpreters/perlpp/releases/latest)

@@ -574,7 +574,7 @@ sub Main {
 	parse_command_line $lrArgv, \%Opts;
 
 	if($Opts{PRINT_VERSION}) {
-		print "PerlPP version $VERSION\n";
+		print "PerlPP version $Text::PerlPP::VERSION\n";
 		return EXIT_OK;
 	}
 
