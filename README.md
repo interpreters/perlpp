@@ -10,6 +10,18 @@ PerlPP runs in two passes: it generates a Perl script from your input, and then
 it runs the generated script.  If you see `error at (eval ##)`
 (for some number `##`), it means there was an error in the generated script.
 
+Installation
+------------
+
+Easy way #1: `cpanm Text::PerlPP`
+(using [cpanminus](https://metacpan.org/pod/App::cpanminus).
+
+Easy way #2: copy the `perlpp` file from the
+[latest release](https://github.com/interpreters/perlpp/releases/latest)
+into a directory in your `PATH`, and `chmod a+x perlpp`.
+
+For development or more information, see the other [README](README).
+
 Usage
 -----
 

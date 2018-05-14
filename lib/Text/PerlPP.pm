@@ -3,7 +3,7 @@
 
 package Text::PerlPP;
 
-our $VERSION = '0.3.2_1';
+our $VERSION = '0.3.2';
 
 use 5.010001;
 use strict;
@@ -701,7 +701,7 @@ Text::PerlPP - Perl preprocessor: process Perl code within any text file
 
 You can pass any array reference to C<Main()>.  The array you provide
 may be modified by PerlPP.  See L</README.md> or the documentation
-for L</bin/perlpp> for details of the options and input format.
+for L<perlpp> for details of the options and input format.
 
 =head1 BUGS
 
