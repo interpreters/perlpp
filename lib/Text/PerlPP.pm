@@ -80,6 +80,12 @@ my @OBModeNames = qw(plain capture code echo command comment);
 
 # === Code ================================================================
 
+# An alias for print().  This is used so that you can find print statements
+# in the generated script by searching for "print".
+sub emit {
+	print @_;
+}
+
 sub AddPreprocessor {
 	push( @Preprocessors, shift );
 	# TODO run it!
@@ -89,6 +95,7 @@ sub AddPostprocessor {
 	push( @Postprocessors, shift );
 }
 
+# Open an output buffer.  Default mode is literal text.
 sub StartOB {
 	my $mode = OBMODE_PLAIN;
 
@@ -188,7 +195,7 @@ sub ExecuteCommand {
 	} elsif ( $cmd =~ /^macro\s++(.*+)$/si ) {
 		StartOB();									# plain text
 		eval( $1 ); warn $@ if $@;
-		print "print " . PrepareString( EndOB() ) . ";\n";
+		emit "print " . PrepareString( EndOB() ) . ";\n";
 
 	} elsif ( $cmd =~ /^immediate\s++(.*+)$/si ) {
 		eval( $1 ); warn $@ if $@;
@@ -210,23 +217,23 @@ sub ExecuteCommand {
 		$rest =~ s/^\s+|\s+$//g;			# trim whitespace
 		$rest='true' if not length($rest);	# default to true
 
-		print "\$D\{$nm\} = ($rest) ;\n";
+		emit "\$D\{$nm\} = ($rest) ;\n";
 
 	} elsif ( $cmd =~ /^undef\s++(?<nm>\S++)\s*+$/i ) {	# clear from %D
 		my $nm = $+{nm};
 		die "Invalid name \"$nm\" in \"undef\"" if $nm !~ DEFINE_NAME_RE;
-		print "\$D\{$nm\} = undef;\n";
+		emit "\$D\{$nm\} = undef;\n";
 
 	# Conditionals
 	} elsif ( $cmd =~ /^ifdef\s++(?<nm>\S++)\s*+$/i ) {	# test in %D
 		my $nm = $+{nm};		# Otherwise !~ clobbers it.
 		die "Invalid name \"$nm\" in \"ifdef\"" if $nm !~ DEFINE_NAME_RE;
-		print "if(defined(\$D\{$nm\})) {\n";	# Don't need exists()
+		emit "if(defined(\$D\{$nm\})) {\n";	# Don't need exists()
 
 	} elsif ( $cmd =~ /^ifndef\s++(?<nm>\S++)\s*+$/i ) {	# test in %D
 		my $nm = $+{nm};		# Otherwise !~ clobbers it.
 		die "Invalid name \"$nm\" in \"ifdef\"" if $nm !~ DEFINE_NAME_RE;
-		print "if(!defined(\$D\{$nm\})) {\n";	# Don't need exists()
+		emit "if(!defined(\$D\{$nm\})) {\n";	# Don't need exists()
 
 	} elsif ( $cmd =~ /^if\s++(.*+)$/i ) {	# :if - General test of %D values
 		my $test = $1;		# $1 =~ doesn't work for me
@@ -235,7 +242,7 @@ sub ExecuteCommand {
 				"  Maybe an invalid variable name?";
 		}
 		my $ref="\$D\{$+{nm}\}";
-		print "if(exists($ref) && ( $ref $+{rest} ) ) {\n";
+		emit "if(exists($ref) && ( $ref $+{rest} ) ) {\n";
 			# Test exists() first so undef maps to false rather than warning.
 
 	} elsif ( $cmd =~ /^(elsif|elseif|elif)\s++(.*+)$/ ) {	# :elsif with condition
@@ -246,14 +253,14 @@ sub ExecuteCommand {
 				"  Maybe an invalid variable name?";
 		}
 		my $ref="\$D\{$+{nm}\}";
-		print "} elsif(exists($ref) && ( $ref $+{rest} ) ) {\n";
+		emit "} elsif(exists($ref) && ( $ref $+{rest} ) ) {\n";
 			# Test exists() first so undef maps to false rather than warning.
 
 	} elsif ( $cmd =~ /^else\s*+$/i ) {
-		print "} else {\n";
+		emit "} else {\n";
 
 	} elsif ( $cmd =~ /^endif\s*+$/i ) {				# end of a block
-		print "}\n";
+		emit "}\n";
 
 	} else {
 		die "Unknown PerlPP command: ${cmd}";
@@ -298,7 +305,7 @@ sub ShellOut {		# Run an external command
 		};
 		};
 	$block =~ s/^\t{2}//gm;		# de-indent
-	print $block;
+	emit $block;
 } #ShellOut()
 
 sub OnOpening {
@@ -313,7 +320,7 @@ sub OnOpening {
 	$plainMode = GetModeOfOB();
 	$plain = EndOB();						# plain text already seen
 	if ( $after =~ /^"/ && $plainMode == OBMODE_CAPTURE ) {
-		print PrepareString( $plain );
+		emit PrepareString( $plain );
 		# we are still buffering the inset contents,
 		# so we do not have to start it again
 	} else {
@@ -334,17 +341,17 @@ sub OnOpening {
 			die "Unexpected end of capturing";
 		} else {
 			StartOB( $plainMode );					# skip non-PerlPP insets
-			print $plain . TAG_OPEN;
+			emit $plain . TAG_OPEN;
 			return ( false, $after );
 				# Here $after is the entire rest of the input, so it is as if
 				# the TAG_OPEN had never occurred.
 		}
 
 		if ( $plainMode == OBMODE_CAPTURE ) {
-			print PrepareString( $plain ) . " . do { Text::PerlPP::StartOB(); ";
+			emit PrepareString( $plain ) . " . do { Text::PerlPP::StartOB(); ";
 			StartOB( $plainMode );					# wrap the inset in a capturing mode
 		} else {
-			print "print " . PrepareString( $plain ) . ";\n";
+			emit "print " . PrepareString( $plain ) . ";\n";
 		}
 		StartOB( $insetMode );						# contents of the inset
 	}
@@ -361,36 +368,50 @@ sub OnClosing {
 	$inside = EndOB();								# contents of the inset
 	if ( $inside =~ /"$/ ) {
 		StartOB( $insetMode );						# restore contents of the inset
-		print substr( $inside, 0, -1 );
+		emit substr( $inside, 0, -1 );
 		$nextMode = OBMODE_CAPTURE;
 	} else {
 		if ( $insetMode == OBMODE_ECHO ) {
-			print "print ${inside};\n";				# don't wrap in (), trailing semicolon
+			emit "print ${inside};\n";				# don't wrap in (), trailing semicolon
 		} elsif ( $insetMode == OBMODE_COMMAND ) {
 			ExecuteCommand( $inside );
 		} elsif ( $insetMode == OBMODE_COMMENT ) {
 			# Ignore the contents - no operation
 		} elsif ( $insetMode == OBMODE_CODE ) {
-			print "$inside\n";	# \n so you can put comments in your perl code
+			emit "$inside\n";	# \n so you can put comments in your perl code
 		} elsif ( $insetMode == OBMODE_SYSTEM ) {
 			ShellOut( $inside );
 		} else {
-			print $inside;
+			emit $inside;
 		}
 
 		if ( GetModeOfOB() == OBMODE_CAPTURE ) {		# if the inset is wrapped
-			print EndOB() . " Text::PerlPP::EndOB(); } . ";	# end of do { .... } statement
+			emit EndOB() . " Text::PerlPP::EndOB(); } . ";	# end of do { .... } statement
 			$nextMode = OBMODE_CAPTURE;				# back to capturing
 		}
 	}
 	StartOB( $nextMode );							# plain text
 } #OnClosing()
 
+# Print a "#line" line.  Filename must not contain /"/.
+sub emit_pound_line {
+	my ($fname, $lineno) = @_;
+	$lineno = 0+$lineno;
+	$fname = '' . $fname;
+
+	emit "\n#line $lineno \"$fname\"\n";
+} #emit_pound_line
+
 # Process the contents of a single file
 sub RunPerlPPOnFileContents {
 	my $contents_ref = shift;						# reference
+	my $fname = shift;
+	emit_pound_line $fname, 1;
+
 	my $withinTag = false;
 	my $lastPrep;
+
+	#my $lineno=1;	# approximated by the number of newlines we see
 
 	$lastPrep = $#Preprocessors;
 	StartOB();										# plain text
@@ -399,8 +420,9 @@ sub RunPerlPPOnFileContents {
 	OPENING:
 	if ( $withinTag ) {
 		if ( $$contents_ref =~ CLOSING_RE ) {
-			print $1;
+			emit $1;
 			$$contents_ref = $2;
+			#$lineno += ( () = ($1 . TAG_CLOSE) =~ /\n/g );
 			OnClosing();
 			# that could have been a command, which added new preprocessors
 			# but we don't want to run previously executed preps the second time
@@ -413,9 +435,11 @@ sub RunPerlPPOnFileContents {
 		};
 	} else {	# look for the next opening tag.  $1 is before; $2 is after.
 		if ( $$contents_ref =~ OPENING_RE ) {
-			print $1;
+			emit $1;
 			( $withinTag, $$contents_ref ) = OnOpening( $2 );
+			#$lineno += ( () = ($1 . TAG_OPEN) =~ /\n/g );
 			if ( $withinTag ) {
+				#emit_pound_line $fname, $lineno if(GetModeOfOB() == OBMODE_CODE);
 				goto OPENING;		# $$contents_ref is the rest of the string
 			}
 		}
@@ -450,10 +474,10 @@ sub RunPerlPPOnFileContents {
 		die "Unfinished capturing";
 	}
 
-	print $$contents_ref;							# tail of a plain text
+	emit $$contents_ref;							# tail of a plain text
 
 	# getting the rest of the plain text
-	print "print " . PrepareString( EndOB() ) . ";\n";
+	emit "print " . PrepareString( EndOB() ) . ";\n";
 } #RunPerlPPOnFileContents()
 
 # Process a single file
@@ -485,7 +509,9 @@ sub ProcessFile {
 		&$proc( \$contents );						# $contents is modified
 	}
 
-	RunPerlPPOnFileContents( \$contents );
+	$fname =~ s{"}{-}g;		# Prep $fname for #line use -
+							#My impression is #line chokes on embedded "
+	RunPerlPPOnFileContents( \$contents, $fname || '<standard input>');
 
 	if ( $wdir ) {
 		$WorkingDir = $wdir;
@@ -493,7 +519,7 @@ sub ProcessFile {
 } #ProcessFile()
 
 sub Include {	# As ProcessFile(), but for use within :macro
-	print "print " . PrepareString( EndOB() ) . ";\n";
+	emit "print " . PrepareString( EndOB() ) . ";\n";
 		# Close the OB opened by :macro
 	ProcessFile(shift);
 	StartOB();		# re-open a plain-text OB
@@ -616,15 +642,15 @@ sub Main {
 		# $Package is not the whole name, so can start with a number.
 
 	StartOB();	# Output from here on will be included in the generated script
-	print "package PPP_${Package};\nuse 5.010001;\nuse strict;\nuse warnings;\n";
-	print "use constant { true => !!1, false => !!0 };\n";
+	emit "package PPP_${Package};\nuse 5.010001;\nuse strict;\nuse warnings;\n";
+	emit "use constant { true => !!1, false => !!0 };\n";
 
 	# Definitions
 
 	# Transfer parameters from the command line (-D) to the processed file,
 	# as textual representations of expressions.
 	# The parameters are in %D at runtime.
-	print "my %D = (\n";
+	emit "my %D = (\n";
 	for my $defname (keys %{$Opts{DEFS}}) {
 		my $val = ${$Opts{DEFS}}{$defname} // 'true';
 			# just in case it's undef.  "true" is the constant in this context
@@ -632,9 +658,9 @@ sub Main {
 			# "-D foo" (without a value) sets it to _true_ so
 			# "if($D{foo})" will work.  Getopt::Long gives us '' as the
 			# value in that situation.
-		print "    $defname => $val,\n";
+		emit "    $defname => $val,\n";
 	}
-	print ");\n";
+	emit ");\n";
 
 	# Save a copy for use at generation time
 	%Defs = map {	my $v = eval(${$Opts{DEFS}}{$_});
@@ -670,7 +696,7 @@ sub Main {
 			keys %{$Opts{SETS}};
 
 	# Make the copy for runtime
-	print "my %S = (\n";
+	emit "my %S = (\n";
 	for my $defname (keys %{$Opts{SETS}}) {
 		my $val = ${$Opts{SETS}}{$defname};
 		if(!defined($val)) {
@@ -679,12 +705,15 @@ sub Main {
 			# "-s foo" (without a value) sets it to _true_ so
 			# "if($S{foo})" will work.  Getopt::Long gives us '' as the
 			# value in that situation.
-		print "    $defname => $val,\n";
+		emit "    $defname => $val,\n";
 	}
-	print ");\n";
+	emit ");\n";
 
 	# Initial code from the command line, if any
-	print $Opts{EVAL}, "\n" if $Opts{EVAL};
+	if($Opts{EVAL}) {
+		emit_pound_line '<-e>', 1;
+		emit $Opts{EVAL}, "\n";
+	}
 
 	# The input file
 	ProcessFile( $Opts{INPUT_FILENAME} );
