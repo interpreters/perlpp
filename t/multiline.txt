@@ -1,0 +1,14 @@
+Line 1
+Line 2
+Line 3
+<?= 42 ?>
+<?# Comment on line 5
+Comment on line 6
+Comment on line 7?><? print "statement on line 7"; ?>
+<? foreach my $x (1..10) {		# line 8
+	say $x;						# line 9
+} #line 10 ?>
+Line 11
+<? a grievous syntax error on lnum 12!
+Whoa man!  Another on lnum 13!  ?>
+# vi: set ts=4 sts=0 sw=4 noet ai ft=perl: #

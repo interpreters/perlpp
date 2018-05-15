@@ -15,7 +15,7 @@ my @testcases=(
 	['--version','',qr/\bversion\b/],
 
 	# Debug output
-	['-d','',qr/^package PPP_;/],
+	['-d','',qr/^package PPP_;/m],
 	['-d', '<?= 2+2 ?>', qr{print\s+2\+2\s*;}],
 	['--debug', '<?= 2+2 ?>', qr{print\s+2\+2\s*;}],
 	['-E', '<?= 2+2 ?>', qr{print\s+2\+2\s*;}],
