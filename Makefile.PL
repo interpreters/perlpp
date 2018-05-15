@@ -36,7 +36,7 @@ WriteMakefile(
         'Test::More' => '0',
     },
     PREREQ_PM => {
-        'Getopt::Long'     => '2.50',   # Per issue #17
+        'Getopt::Long'     => '2.5',    # Per issue #17
         'Pod::Usage'       => '0',
     },
     dist  => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },

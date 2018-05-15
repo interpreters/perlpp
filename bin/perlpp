@@ -59,6 +59,15 @@ script.
 Don't evaluate Perl code, just write the generated code to STDOUT.
 By analogy with the C<-E> option of gcc.
 
+=item --Elines
+
+In case of an error in the input, perlpp normally tries to report a
+file and line number close to the location of the error in the source file.
+However, the match isn't always perfect.  If C<--Elines> is given, errors will
+be reported at the line number in the generated script.  The generated
+script will still include C<## sync> markers showing you about where the input
+files/lines are, for ease of reference.
+
 =item -k, --keep-going
 
 Normally, errors in a C<!command> sequence will terminate further

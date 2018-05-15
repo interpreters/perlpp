@@ -3,7 +3,7 @@
 
 package Text::PerlPP;
 
-our $VERSION = '0.3.3_1';
+our $VERSION = '0.4.0';
 
 use 5.010001;
 use strict;
@@ -13,6 +13,7 @@ use Getopt::Long 2.5 qw(GetOptionsFromArray);
 use Pod::Usage;
 
 # === Constants ===========================================================
+
 use constant true			=> !!1;
 use constant false			=> !!0;
 
@@ -48,8 +49,10 @@ use constant OBMODE_SYSTEM	=> 6;	# an external command being run
 
 # Layout of the output-buffer stack.
 use constant OB_TOP 		=> 0;	# top of the stack is [0]: use [un]shift
-use constant OB_MODE 		=> 0;	# each stack entry is a two-element array
+
+use constant OB_MODE 		=> 0;	# indices of the stack entries
 use constant OB_CONTENTS 	=> 1;
+use constant OB_STARTLINE	=> 2;
 
 # === Globals =============================================================
 
@@ -73,12 +76,13 @@ my %Defs_repl_text = ();	# Replacement text for -D names
 our %Sets = ();				# Command-line -s arguments
 
 # Output-buffer stack
-my @OutputBuffers = ();		# each entry is a two-element array
+my @OutputBuffers = ();
+	# Each entry is an array of [mode, text, opening line number]
 
 # Debugging info
 my @OBModeNames = qw(plain capture code echo command comment);
 
-# === Code ================================================================
+# === Internal routines ===================================================
 
 # An alias for print().  This is used so that you can find print statements
 # in the generated script by searching for "print".
@@ -95,16 +99,18 @@ sub AddPostprocessor {
 	push( @Postprocessors, shift );
 }
 
+# --- Output buffers ----------------------------------------------
+
 # Open an output buffer.  Default mode is literal text.
 sub StartOB {
-	my $mode = OBMODE_PLAIN;
+	my $mode = shift // OBMODE_PLAIN;
+	my $lineno = shift // 1;
 
-	$mode = shift if @_;
 	if ( scalar @OutputBuffers == 0 ) {
 		$| = 1;					# flush contents of STDOUT
 		open( $RootSTDOUT, ">&STDOUT" ) or die $!;		# dup filehandle
 	}
-	unshift( @OutputBuffers, [ $mode, "" ] );
+	unshift( @OutputBuffers, [ $mode, "", $lineno ] );
 	close( STDOUT );			# must be closed before redirecting it to a variable
 	open( STDOUT, ">>", \$OutputBuffers[ OB_TOP ]->[ OB_CONTENTS ] ) or die $!;
 	$| = 1;						# do not use output buffering
@@ -145,9 +151,17 @@ sub ReadAndEmptyOB {
 	return $s;
 } #ReadAndEmptyOB()
 
+# Accessors
+
+sub GetStartLineOfOB {
+	return $OutputBuffers[ OB_TOP ]->[ OB_STARTLINE ];
+}
+
 sub GetModeOfOB {
 	return $OutputBuffers[ OB_TOP ]->[ OB_MODE ];
 }
+
+# --- String manipulation -----------------------------------------
 
 sub DQuoteString {	# wrap $_[0] in double-quotes, escaped properly
 	# Not currently used by PerlPP, but provided for use by scripts.
@@ -183,6 +197,8 @@ sub PrepareString {
 	# Quote it for printing
 	return QuoteString( $s );
 }
+
+# --- Script-accessible commands ----------------------------------
 
 sub ExecuteCommand {
 	my $cmd = shift;
@@ -308,39 +324,60 @@ sub ShellOut {		# Run an external command
 	emit $block;
 } #ShellOut()
 
+# --- Delimiter processing ----------------------------------------
+
+# Print a "#line" line.  Filename must not contain /"/.
+sub emit_pound_line {
+	my ($fname, $lineno) = @_;
+	$lineno = 0+$lineno;
+	$fname = '' . $fname;
+
+	emit "\n#@{[ $Opts{DEBUG_LINENOS} ? '#sync' : 'line' ]} $lineno \"$fname\"\n";
+} #emit_pound_line()
+
 sub OnOpening {
 	# takes the rest of the string, beginning right after the ? of the tag_open
 	# returns (withinTag, string still to be processed)
 
-	my $after = shift;
+	my ($after, $lineno) = @_;
+
 	my $plain;
 	my $plainMode;
 	my $insetMode = OBMODE_CODE;
 
 	$plainMode = GetModeOfOB();
 	$plain = EndOB();						# plain text already seen
+
 	if ( $after =~ /^"/ && $plainMode == OBMODE_CAPTURE ) {
 		emit PrepareString( $plain );
 		# we are still buffering the inset contents,
 		# so we do not have to start it again
 	} else {
+
 		if ( $after =~ /^=/ ) {
 			$insetMode = OBMODE_ECHO;
+
 		} elsif ( $after =~ /^:/ ) {
 			$insetMode = OBMODE_COMMAND;
+
 		} elsif ( $after =~ /^#/ ) {
 			$insetMode = OBMODE_COMMENT;
+
 		} elsif ( $after =~ m{^\/} ) {
 			$plain .= "\n";		# newline after what we've already seen
 			# OBMODE_CODE
+
 		} elsif ( $after =~ /^(?:\s|$)/ ) {
 			# OBMODE_CODE
+
 		} elsif ( $after =~ /^!/ ) {
 			$insetMode = OBMODE_SYSTEM;
+
 		} elsif ( $after =~ /^"/ ) {
 			die "Unexpected end of capturing";
+
 		} else {
-			StartOB( $plainMode );					# skip non-PerlPP insets
+			StartOB( $plainMode, $lineno );		# skip non-PerlPP insets
 			emit $plain . TAG_OPEN;
 			return ( false, $after );
 				# Here $after is the entire rest of the input, so it is as if
@@ -349,40 +386,58 @@ sub OnOpening {
 
 		if ( $plainMode == OBMODE_CAPTURE ) {
 			emit PrepareString( $plain ) . " . do { Text::PerlPP::StartOB(); ";
-			StartOB( $plainMode );					# wrap the inset in a capturing mode
+			StartOB( $plainMode, $lineno );		# wrap the inset in a capturing mode
 		} else {
 			emit "print " . PrepareString( $plain ) . ";\n";
 		}
-		StartOB( $insetMode );						# contents of the inset
+
+		StartOB( $insetMode, $lineno );			# contents of the inset
 	}
 	return ( true, "" ) unless $after;
 	return ( true, substr( $after, 1 ) );
 } #OnOpening()
 
 sub OnClosing {
-	my $inside;
-	my $insetMode;
+	my $end_lineno = shift // 0;
+	my $fname = shift // "<unknown filename>";
+
 	my $nextMode = OBMODE_PLAIN;
 
-	$insetMode = GetModeOfOB();
-	$inside = EndOB();								# contents of the inset
+	my $start_lineno = GetStartLineOfOB();
+	my $insetMode = GetModeOfOB();
+	my $inside = EndOB();								# contents of the inset
+
 	if ( $inside =~ /"$/ ) {
-		StartOB( $insetMode );						# restore contents of the inset
+		StartOB( $insetMode, $end_lineno );				# restore contents of the inset
 		emit substr( $inside, 0, -1 );
 		$nextMode = OBMODE_CAPTURE;
+
 	} else {
 		if ( $insetMode == OBMODE_ECHO ) {
+			emit_pound_line $fname, $start_lineno;
 			emit "print ${inside};\n";				# don't wrap in (), trailing semicolon
+			emit_pound_line $fname, $end_lineno;
+
 		} elsif ( $insetMode == OBMODE_COMMAND ) {
 			ExecuteCommand( $inside );
+
 		} elsif ( $insetMode == OBMODE_COMMENT ) {
-			# Ignore the contents - no operation
+			# Ignore the contents - no operation.  Do resync, though.
+			emit_pound_line $fname, $end_lineno;
+
 		} elsif ( $insetMode == OBMODE_CODE ) {
+			emit_pound_line $fname, $start_lineno;
 			emit "$inside\n";	# \n so you can put comments in your perl code
+			emit_pound_line $fname, $end_lineno;
+
 		} elsif ( $insetMode == OBMODE_SYSTEM ) {
+			emit_pound_line $fname, $start_lineno;
 			ShellOut( $inside );
+			emit_pound_line $fname, $end_lineno;
+
 		} else {
 			emit $inside;
+
 		}
 
 		if ( GetModeOfOB() == OBMODE_CAPTURE ) {		# if the inset is wrapped
@@ -393,14 +448,12 @@ sub OnClosing {
 	StartOB( $nextMode );							# plain text
 } #OnClosing()
 
-# Print a "#line" line.  Filename must not contain /"/.
-sub emit_pound_line {
-	my ($fname, $lineno) = @_;
-	$lineno = 0+$lineno;
-	$fname = '' . $fname;
+# --- File processing ---------------------------------------------
 
-	emit "\n#line $lineno \"$fname\"\n";
-} #emit_pound_line
+# Count newlines in a string
+sub num_newlines {
+	return scalar ( () = $_[0] =~ /\n/g );
+} #num_newlines()
 
 # Process the contents of a single file
 sub RunPerlPPOnFileContents {
@@ -411,7 +464,7 @@ sub RunPerlPPOnFileContents {
 	my $withinTag = false;
 	my $lastPrep;
 
-	#my $lineno=1;	# approximated by the number of newlines we see
+	my $lineno=1;	# approximated by the number of newlines we see
 
 	$lastPrep = $#Preprocessors;
 	StartOB();										# plain text
@@ -421,9 +474,9 @@ sub RunPerlPPOnFileContents {
 	if ( $withinTag ) {
 		if ( $$contents_ref =~ CLOSING_RE ) {
 			emit $1;
+			$lineno += num_newlines($1);
 			$$contents_ref = $2;
-			#$lineno += ( () = ($1 . TAG_CLOSE) =~ /\n/g );
-			OnClosing();
+			OnClosing( $lineno, $fname );
 			# that could have been a command, which added new preprocessors
 			# but we don't want to run previously executed preps the second time
 			while ( $lastPrep < $#Preprocessors ) {
@@ -436,10 +489,9 @@ sub RunPerlPPOnFileContents {
 	} else {	# look for the next opening tag.  $1 is before; $2 is after.
 		if ( $$contents_ref =~ OPENING_RE ) {
 			emit $1;
-			( $withinTag, $$contents_ref ) = OnOpening( $2 );
-			#$lineno += ( () = ($1 . TAG_OPEN) =~ /\n/g );
+			$lineno += num_newlines($1);
+			( $withinTag, $$contents_ref ) = OnOpening( $2, $lineno );
 			if ( $withinTag ) {
-				#emit_pound_line $fname, $lineno if(GetModeOfOB() == OBMODE_CODE);
 				goto OPENING;		# $$contents_ref is the rest of the string
 			}
 		}
@@ -553,6 +605,7 @@ my %CMDLINE_OPTS = (
 	# lowercase before upper, although the code does not require that order.
 
 	DEBUG => ['d','|E|debug', false],
+	DEBUG_LINENOS => ['Elines','',false],	# if true, don't add #line markers
 	DEFS => ['D','|define:s%'],		# In %D, and text substitution
 	EVAL => ['e','|eval=s', ''],
 	# -h and --help reserved
@@ -622,6 +675,7 @@ sub parse_command_line {
 } #parse_command_line()
 
 # === Main ================================================================
+
 sub Main {
 	my $lrArgv = shift // [];
 	parse_command_line $lrArgv, \%Opts;
@@ -642,6 +696,12 @@ sub Main {
 		# $Package is not the whole name, so can start with a number.
 
 	StartOB();	# Output from here on will be included in the generated script
+
+	# Help the user know where to look
+	say "#line 1 \"<script: rerun with -E to see text>\"" if($Opts{DEBUG_LINENOS});
+	emit_pound_line '<package header>', 1;
+
+	# Open the package
 	emit "package PPP_${Package};\nuse 5.010001;\nuse strict;\nuse warnings;\n";
 	emit "use constant { true => !!1, false => !!0 };\n";
 
@@ -743,6 +803,7 @@ sub Main {
 } #Main()
 
 1;
+__END__
 # ### Documentation #######################################################
 
 =pod
