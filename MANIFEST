@@ -21,3 +21,5 @@ t/a.txt
 t/b.txt
 t/c.txt
 t/included.txt
+t/multiline.txt
+t/unclosed.txt
