@@ -1,10 +1,8 @@
 #!/usr/bin/env perl -W
 # Tests from perlpp's README.md and bin/perlpp's POD.
-use strict;
-use warnings;
-use Test::More;
-use IPC::Run3;
 use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
+use rlib './lib';
+use PerlPPTest;
 
 my ($in, $out, $err);
 

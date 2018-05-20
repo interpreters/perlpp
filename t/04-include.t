@@ -1,9 +1,7 @@
 #!/usr/bin/env perl -W
 # Tests of :include, :macro Include, :immediate ProcessFile
-use strict;
-use warnings;
-use Test::More;
-use IPC::Run3;
+use rlib './lib';
+use PerlPPTest;
 use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
 
 (my $whereami = __FILE__) =~ s/04-include\.t$//;

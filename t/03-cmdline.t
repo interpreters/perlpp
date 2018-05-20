@@ -1,10 +1,8 @@
 #!/usr/bin/env perl -W
 # Tests of perlpp command-line options
-use strict;
-use warnings;
-use Test::More;
-use IPC::Run3;
 use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
+use rlib './lib';
+use PerlPPTest;
 
 my @testcases=(
 	# [$cmdline_options, $in (the script), $out_re (expected output),
@@ -111,21 +109,25 @@ for my $lrTest (@testcases) {
 }
 
 plan tests => $testcount;
+diag "Running $testcount tests";
 
 for my $lrTest (@testcases) {
 	my ($opts, $testin, $out_re, $err_re) = @$lrTest;
 
 	my ($out, $err);
-	#print STDERR CMD . " $opts", " <<<'", $testin, "'\n";
-	run3 CMD . " $opts", \$testin, \$out, \$err;
+	diag "$opts", " <<<'", $testin, "'\n";
+	run_perlpp $opts, \$testin, \$out, \$err;
+	diag "Done running";
 
 	if(defined $out_re) {
+		diag "checking output";
 		like($out, $out_re);
 	}
 	if(defined $err_re) {
+		diag "checking stderr";
 		like($err, $err_re);
 	}
-	#print STDERR "$err\n";
+	print STDERR "$err\n";
 
 } # foreach test
 

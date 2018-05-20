@@ -1,11 +1,8 @@
 #!/usr/bin/env perl -W
 # Test running perlpp on itself - nothing should change.
 # Always uses the Text/PerlPP.pm in lib, for simplicity.
-use strict;
-use warnings;
-use Test::More tests => 1;
-use IPC::Run3;
-
+use rlib './lib';
+use PerlPPTest;
 use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp')
 	. ' lib/Text/PerlPP.pm';
 diag 'idempotency-test command: ' . CMD;

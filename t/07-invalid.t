@@ -1,9 +1,7 @@
 #!/usr/bin/env perl -W
 # Testing perlpp with invalid input
-use strict;
-use warnings;
-use Test::More;
-use IPC::Run3;
+use rlib './lib';
+use PerlPPTest;
 use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
 (my $whereami = __FILE__) =~ s/07-invalid\.t$//;
 diag "perlpp command " . CMD . "; whereami $whereami.";

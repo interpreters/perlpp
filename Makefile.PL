@@ -2,18 +2,26 @@ use 5.010;
 use strict;
 use warnings;
 use ExtUtils::MakeMaker;
+use Config;
 
-sub MY::postamble {
+# Get the filename of the Perl interpreter running this.  From perlvar.
+my $secure_perl_path = $Config{perlpath};
+if ($^O ne 'VMS') {
+    $secure_perl_path .= $Config{_exe}
+        unless $secure_perl_path =~ m/$Config{_exe}$/i;
+}
+
+sub MY::postamble {     # TODO also handle Windows nmake syntax (SET vs. export)
     return <<EOT;
 authortest:
 \tRELEASE_TESTING=1 prove -l xt"
 
 testhere:   # Run the tests from lib rather than blib
-\texport PERLPP_CMD="perl -Ilib bin/perlpp"; \\
+\texport PERLPP_CMD="\\\"$secure_perl_path\\\" -Ilib bin/perlpp"; \\
 \tperl -Ilib -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t
 
 testpacked: pack    # Test the packed version
-\texport PERLPP_NOUSE=1 PERLPP_CMD="perl blib/perlpp"; \\
+\texport PERLPP_NOUSE=1 PERLPP_CMD="\\\"$secure_perl_path\\\" blib/perlpp"; \\
 \tperl -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t
 EOT
 } #postamble
@@ -35,6 +43,7 @@ WriteMakefile(
         'IPC::Run3' => '0',
         'Test::More' => '0',
     },
+    # TODO add TEST_REQUIRES
     PREREQ_PM => {
         'Getopt::Long'     => '2.5',    # Per issue #17
         'Pod::Usage'       => '0',

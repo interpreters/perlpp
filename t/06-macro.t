@@ -1,9 +1,7 @@
 #!/usr/bin/env perl -W
 # Tests of perlpp :macro and related
-use strict;
-use warnings;
-use Test::More 'no_plan';
-use IPC::Run3;
+use rlib './lib';
+use PerlPPTest;
 use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
 
 (my $whereami = __FILE__) =~ s/06-macro\.t$//;

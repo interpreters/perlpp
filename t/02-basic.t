@@ -1,14 +1,14 @@
 #!/usr/bin/env perl -W
 # Some basic tests for perlpp
-use strict;
-use warnings;
-use Test::More;
-use IPC::Run3;
-use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
-diag "perlpp command: " . CMD;
-(my $whereami = __FILE__) =~ s/01-basic\.t$//;
+use rlib './lib';
+use PerlPPTest;
 
-my ($in, $out, $err);
+use IPC::Run3;
+#use constant CMD => ($ENV{PERLPP_CMD} || "$^X -Iblib/lib blib/script/perlpp");
+#	# TODO use $^X even if a PERLPP_CMD is provided.
+#diag "perlpp command: " . CMD;
+(my $whereami = __FILE__) =~ s/02-basic\.t$//;
+diag join(' ', 'File is' . __FILE__, 'whereami', $whereami);
 
 my @testcases=(
 	# [$in (the script), $out (expected output), $err (stderr output, if any)]
@@ -46,10 +46,14 @@ plan tests => scalar @testcases;
 
 for my $lrTest (@testcases) {
 	my ($testin, $refout, $referr) = @$lrTest;
-	run3 CMD, \$testin, \$out, \$err;
+
+	my ($in, $out, $err);
+	run_perlpp [], \$testin, \$out, \$err;
+
 	if(defined $refout) {
 		is($out, $refout);
 	}
+
 	if(defined $referr) {
 		is($err, $referr);
 	}
