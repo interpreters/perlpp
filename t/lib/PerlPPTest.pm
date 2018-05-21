@@ -18,11 +18,23 @@ use Capture::Tiny 'capture';
 use Carp;
 use Config;
 use IPC::Run3;
+use Text::ParseWords qw(shellwords);
 
+# Debugging aids
 use Data::Dumper;
+use Devel::StackTrace;
 
-our @EXPORT = qw(run_perlpp);
+our @EXPORT = qw(run_perlpp L);
 our @EXPORT_OK = qw(get_perl_filename);
+
+# L: given a list, return an array ref that includes that list, with the
+# caller's filename:line number at the front of the list
+sub L {
+	my (undef, $filename, $line) = caller;
+	say STDERR "\n## L trace:\n",
+		(Devel::StackTrace->new->as_string() =~ s/^/##/mgr);
+	return ["$filename:$line", @_];
+} #L
 
 # run_perlpp: Run perlpp
 # Args: $lrArgs, $refStdin, $refStdout, $refStderr
@@ -30,11 +42,11 @@ sub run_perlpp {
 	my ($lrArgs, $refStdin, $refStdout, $refStderr) = @_;
 	my $retval;
 
-	$lrArgs = [split(' ', $lrArgs)] if ref $lrArgs ne 'ARRAY';
-	say STDERR "args: ", Dumper($lrArgs);
+	$lrArgs = [shellwords($lrArgs)] if ref $lrArgs ne 'ARRAY';
+	say STDERR "## args:\n", (Dumper($lrArgs) =~ s/^/##/mgr);
 
 	if($ENV{PERLPP_PERLOPTS}) {
-		say STDERR "# running external perl";
+		#say STDERR "# running external perl";
 		$retval = run3(
 			join(' ', get_perl_filename(), $ENV{PERLPP_PERLOPTS},
 				@$lrArgs),
@@ -52,9 +64,9 @@ sub run_perlpp {
 		eval {
 			($$refStdout, $$refStderr, @result) = capture {
 				# Thanks to http://www.perlmonks.org/bare/?node_id=289391 by Zaxo
-				say STDERR "# running perlpp";
+				#say STDERR "# running perlpp";
 				my $result = Text::PerlPP::Main($lrArgs);
-				say STDERR "# done running perlpp";
+				#say STDERR "# done running perlpp";
 				$result;
 			};
 		} or die "Capture failed: " . $@;

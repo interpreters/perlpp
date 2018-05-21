@@ -57,6 +57,10 @@ use constant OB_STARTLINE	=> 2;
 
 # === Globals =============================================================
 
+# TODO encapsulate all of these so state doesn't leak from one call to Main()
+# to another call to Main().
+# Also, add a variable to the PPP_* pointing to the encapsulated state.
+
 # Internals
 my $Package = '';			# package name for the generated script
 my $PackageNum = 0;			# make sure each run has a unique package name
@@ -656,6 +660,8 @@ sub parse_command_line {
 		'usage|?', 'h|help', 'man',					# options we handle here
 		map { $_->[0] . ($_->[1]//'') } values %CMDLINE_OPTS,		# options strs
 		);
+
+	# --- TODO clean up the following.
 	my $noexit_on_help =
 		$hrOptsOut->{ $CMDLINE_OPTS{NOEXIT_ON_HELP}->[0] } // false;
 
@@ -677,6 +683,7 @@ sub parse_command_line {
 		pod2usage(-verbose => 1, -exitval => EXIT_PROC_ERR, %docs) if have('h');
 		pod2usage(-verbose => 2, -exitval => EXIT_PROC_ERR, %docs) if have('man');
 	}
+	# ---
 
 	# Map the option names from GetOptions back to the internal names we use,
 	# e.g., $hrOptsOut->{EVAL} from $hrOptsOut->{e}.
@@ -705,9 +712,13 @@ sub parse_command_line {
 
 sub Main {
 	my $lrArgv = shift // [];
+	say STDERR "\n## -----------------\n## argv:\n",
+		(Dumper($lrArgv) =~ s/^/## /mgr);
 	unless(parse_command_line $lrArgv, \%Opts) {
 		return EXIT_OK;		# TODO report param err vs. proc err?
 	}
+
+	say STDERR "## opts:\n", (Dumper(\%Opts) =~ s/^/## /mgr);
 
 	if($Opts{PRINT_VERSION}) {
 		print "PerlPP version $Text::PerlPP::VERSION\n";
@@ -785,6 +796,9 @@ sub Main {
 				}
 			keys %{$Opts{SETS}};
 
+	say STDERR "\n# Defs_RE: $Defs_RE";
+	say STDERR "# Defs_repl_text:\n", (Dumper(\%Defs_repl_text)=~s/^/# /gmr);
+	say STDERR "# Sets\n", (Dumper(\%Sets)=~s/^/# /gmr);
 	# Make the copy for runtime
 	emit "my %S = (\n";
 	for my $defname (keys %{$Opts{SETS}}) {
