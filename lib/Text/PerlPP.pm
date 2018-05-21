@@ -11,6 +11,7 @@ use warnings;
 
 use Getopt::Long 2.5 qw(GetOptionsFromArray);
 use Pod::Usage;
+use Data::Dumper;
 
 # === Constants ===========================================================
 
@@ -58,6 +59,7 @@ use constant OB_STARTLINE	=> 2;
 
 # Internals
 my $Package = '';			# package name for the generated script
+my $PackageNum = 0;			# make sure each run has a unique package name
 my $RootSTDOUT;
 my $WorkingDir = '.';
 my %Opts;					# Parsed command-line options
@@ -616,6 +618,10 @@ my %CMDLINE_OPTS = (
 	SETS => ['s','|set:s%'],		# Extra data in %S, without text substitution
 	# --usage reserved
 	PRINT_VERSION => ['v','|version+'],
+
+	# Special-case for testing --- don't exit on --help &c.
+	NOEXIT_ON_HELP => ['z_noexit_on_help'],
+
 	# -? reserved
 );
 
@@ -645,22 +651,42 @@ sub parse_command_line {
 		# small POD below, which links to `perldoc perlpp`.
 
 	# Get options
+	my $ok =
 	GetOptionsFromArray($lrArgs, $hrOptsOut,		# destination hash
 		'usage|?', 'h|help', 'man',					# options we handle here
-		map { $_->[0] . $_->[1] } values %CMDLINE_OPTS,		# options strs
-		)
-	or pod2usage(-verbose => 0, -exitval => EXIT_PARAM_ERR, %docs);
-		# unknown opt
+		map { $_->[0] . ($_->[1]//'') } values %CMDLINE_OPTS,		# options strs
+		);
+	my $noexit_on_help =
+		$hrOptsOut->{ $CMDLINE_OPTS{NOEXIT_ON_HELP}->[0] } // false;
 
-	# Help, if requested
-	pod2usage(-verbose => 0, -exitval => EXIT_PROC_ERR, %docs) if have('usage');
-	pod2usage(-verbose => 1, -exitval => EXIT_PROC_ERR, %docs) if have('h');
-	pod2usage(-verbose => 2, -exitval => EXIT_PROC_ERR, %docs) if have('man');
+	if($noexit_on_help) {		# Report help during testing
+		# unknown opt --- error out.  false => processing should terminate.
+		pod2usage(-verbose => 0, -exitval => 'NOEXIT', %docs), return false unless $ok;
+
+		# Help, if requested
+		pod2usage(-verbose => 0, -exitval => 'NOEXIT', %docs), return false if have('usage');
+		pod2usage(-verbose => 1, -exitval => 'NOEXIT', %docs), return false if have('h');
+		pod2usage(-verbose => 2, -exitval => 'NOEXIT', %docs), return false if have('man');
+
+	} else {	# Normal usage
+		# unknown opt --- error out
+		pod2usage(-verbose => 0, -exitval => EXIT_PARAM_ERR, %docs) unless $ok;
+
+		# Help, if requested
+		pod2usage(-verbose => 0, -exitval => EXIT_PROC_ERR, %docs) if have('usage');
+		pod2usage(-verbose => 1, -exitval => EXIT_PROC_ERR, %docs) if have('h');
+		pod2usage(-verbose => 2, -exitval => EXIT_PROC_ERR, %docs) if have('man');
+	}
 
 	# Map the option names from GetOptions back to the internal names we use,
 	# e.g., $hrOptsOut->{EVAL} from $hrOptsOut->{e}.
 	my %revmap = map { $CMDLINE_OPTS{$_}->[0] => $_ } keys %CMDLINE_OPTS;
+	#say "revmap ", Dumper(\%revmap);
+	#say "hrOptsOut ", Dumper($hrOptsOut);
 	for my $optname (keys %$hrOptsOut) {
+		#say "\nOptname $optname";
+		#say "Value $hrOptsOut->{$optname}";
+		#say "Revmap $revmap{$optname}";
 		$hrOptsOut->{ $revmap{$optname} } = $hrOptsOut->{ $optname };
 	}
 
@@ -672,13 +698,16 @@ sub parse_command_line {
 	# Process other arguments.  TODO? support multiple input filenames?
 	$hrOptsOut->{INPUT_FILENAME} = $ARGV[0] // "";
 
+	return true;	# Go ahead and run
 } #parse_command_line()
 
 # === Main ================================================================
 
 sub Main {
 	my $lrArgv = shift // [];
-	parse_command_line $lrArgv, \%Opts;
+	unless(parse_command_line $lrArgv, \%Opts) {
+		return EXIT_OK;		# TODO report param err vs. proc err?
+	}
 
 	if($Opts{PRINT_VERSION}) {
 		print "PerlPP version $Text::PerlPP::VERSION\n";
@@ -694,6 +723,7 @@ sub Main {
 	$Package =~ s/^.*?([a-z_][a-z_0-9.]*).pl?$/$1/i;
 	$Package =~ s/[^a-z0-9_]/_/gi;
 		# $Package is not the whole name, so can start with a number.
+	$Package .= $PackageNum++;
 
 	StartOB();	# Output from here on will be included in the generated script
 

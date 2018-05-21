@@ -31,6 +31,7 @@ sub run_perlpp {
 	my $retval;
 
 	$lrArgs = [split(' ', $lrArgs)] if ref $lrArgs ne 'ARRAY';
+	say STDERR "args: ", Dumper($lrArgs);
 
 	if($ENV{PERLPP_PERLOPTS}) {
 		say STDERR "# running external perl";
@@ -41,23 +42,23 @@ sub run_perlpp {
 		# TODO figure out $?, retval, &c.
 
 	} else {
-		say STDERR "# running perlpp internal";
-		say STDERR "# redirecting stdin";
+		#say STDERR "# running perlpp internal";
+		#say STDERR "# redirecting stdin";
 		open local(*STDIN), '<', $refStdin or die $!;
-		say STDERR "# redirected stdin";
+		#say STDERR "# redirected stdin";
 
 		my @result;
-		say STDERR "# before capture";
+		#say STDERR "# before capture";
 		eval {
-		($$refStdout, $$refStderr, @result) = capture {
-			# Thanks to http://www.perlmonks.org/bare/?node_id=289391 by Zaxo
-			say STDERR "# running perlpp";
-			my $result = Text::PerlPP::Main($lrArgs);
-			say STDERR "# done running perlpp";
-			$result;
-		};
+			($$refStdout, $$refStderr, @result) = capture {
+				# Thanks to http://www.perlmonks.org/bare/?node_id=289391 by Zaxo
+				say STDERR "# running perlpp";
+				my $result = Text::PerlPP::Main($lrArgs);
+				say STDERR "# done running perlpp";
+				$result;
+			};
 		} or die "Capture failed: " . $@;
-		say STDERR "# after capture";
+		#say STDERR "# after capture";
 		close STDIN;
 		$retval = $result[0] if @result;
 	}

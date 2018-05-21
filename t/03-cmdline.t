@@ -13,17 +13,20 @@ my @testcases=(
 	['--version','',qr/\bversion\b/],
 
 	# Debug output
-	['-d','',qr/^package PPP_;/m],
+	['-d','',qr/^package PPP_[0-9]*;/m],
 	['-d', '<?= 2+2 ?>', qr{print\s+2\+2\s*;}],
 	['--debug', '<?= 2+2 ?>', qr{print\s+2\+2\s*;}],
 	['-E', '<?= 2+2 ?>', qr{print\s+2\+2\s*;}],
 
 	# Usage
-	['-h', '', qr/^Usage/],
-	['--help', '', qr/^Usage/],
+	['-h --z_noexit_on_help', '', qr/^Usage/],
+	['--help --z_noexit_on_help', '', qr/^Usage/],
 
 	# Eval at start of file
-	['-e \'my $foo=42;\'','<?= $foo ?>', qr/^42$/],
+	[['-e', 'my $foo=42;'],'<?= $foo ?>', qr/^42$/],
+	# TODO RESUME HERE: break down the command line arguments since the
+	# shell is no longer parsing them.  (Note that they will have to be
+	# re-quoted for use by the packed test.)
 	['--eval \'my $foo=42;\'','<?= $foo ?>', qr/^42$/],
 	['-d -e \'my $foo=42;\'','<?= $foo ?>', qr/^my \$foo=42;/m],
 	['--debug --eval \'my $foo=42;\'','<?= $foo ?>', qr/^print\s+\$foo\s*;/m],
@@ -115,16 +118,16 @@ for my $lrTest (@testcases) {
 	my ($opts, $testin, $out_re, $err_re) = @$lrTest;
 
 	my ($out, $err);
-	diag "$opts", " <<<'", $testin, "'\n";
+	diag $opts, " <<<'", $testin, "'\n";
 	run_perlpp $opts, \$testin, \$out, \$err;
-	diag "Done running";
+	#diag "Done running";
 
 	if(defined $out_re) {
-		diag "checking output";
+		#diag "checking output";
 		like($out, $out_re);
 	}
 	if(defined $err_re) {
-		diag "checking stderr";
+		#diag "checking stderr";
 		like($err, $err_re);
 	}
 	print STDERR "$err\n";
