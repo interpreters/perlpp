@@ -65,7 +65,7 @@ sub run_perlpp {
 			($$refStdout, $$refStderr, @result) = capture {
 				# Thanks to http://www.perlmonks.org/bare/?node_id=289391 by Zaxo
 				#say STDERR "# running perlpp";
-				my $result = Text::PerlPP::Main($lrArgs);
+				my $result = Text::PerlPP->new->Main($lrArgs);
 				#say STDERR "# done running perlpp";
 				$result;
 			};

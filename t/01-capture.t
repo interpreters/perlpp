@@ -7,7 +7,7 @@ my ($stdout, $stderr, @result);
 ($stdout, $stderr, @result) = capture {
     local *STDIN;
     close STDIN;
-    Text::PerlPP::Main(['-e','say 42;']);
+    Text::PerlPP->new->Main(['-e','say 42;']);
 };
 
 is($stdout, "42\n");
