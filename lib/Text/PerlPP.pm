@@ -56,7 +56,7 @@ use constant OB_CONTENTS 	=> 1;
 use constant OB_STARTLINE	=> 2;
 
 # What $self is called inside a script package
-use constant PPP_SELF_INSIDE => '_PerlPP_Instance';
+use constant PPP_SELF_INSIDE => 'PSelf';
 
 # Debugging info
 my @OBModeNames = qw(plain capture code echo command comment);
@@ -239,11 +239,58 @@ sub ExecuteCommand {
 
 	} elsif ( $cmd =~ /^macro\s++(.*+)$/si ) {
 		$self->StartOB();									# plain text
-		eval( $1 ); warn $@ if $@;
+
+		# Create the execution environment for the macro:
+		# - Run in the script's package.  Without `package`, the eval'ed
+		# 	code runs in Text::PerlPP.
+		# - Make $PSelf available with `our`.  Each `eval` gets its own
+		# 	set of lexical variables, so $PSelf would have to be referred
+		# 	to with its full package name if we didn't have the `our`.
+		# TODO add a pound line to this eval based on the current line number
+
+		my $code = qq{ ;
+			package $self->{Package} {
+				our \$@{[PPP_SELF_INSIDE]};
+				$1
+			};
+		};
+
+		print "Macro code run:\n$code\n" =~ s/^/#/gmr
+			if($self->{Opts}->{DEBUG});
+		eval $code;
+		my $err = $@; chomp $err;
 		emit 'print ' . $self->PrepareString( $self->EndOB() ) . ";\n";
 
+		# Report the error, if any.  Under -E, it's a warning.
+		my $errmsg = "Error: $err\n  in immediate " . substr($1, 0, 40) . '...';
+		if($self->{Opts}->{DEBUG}) {
+			warn $errmsg if $err;
+		} else {
+			die $errmsg if $err;
+		}
+
 	} elsif ( $cmd =~ /^immediate\s++(.*+)$/si ) {
-		eval( $1 ); warn $@ if $@;
+		# TODO refactor common code between macro and immediate
+
+		# TODO add a pound line to this eval
+		my $code = qq{ ;
+			package $self->{Package} {
+				our \$@{[PPP_SELF_INSIDE]};
+				$1
+			};
+		};
+		print "Immediate code run:\n$code\n" =~ s/^/#/gmr
+			if($self->{Opts}->{DEBUG});
+		eval( $code );
+		my $err = $@; chomp $err;
+
+		# Report the error, if any.  Under -E, it's a warning.
+		my $errmsg = "Error: $err\n  in immediate " . substr($1, 0, 40) . '...';
+		if($self->{Opts}->{DEBUG}) {
+			warn $errmsg if $err;
+		} else {
+			die $errmsg if $err;
+		}
 
 	} elsif ( $cmd =~ /^prefix\s++(\S++)\s++(\S++)\s*+$/i ) {
 		$self->{Prefixes}->{ $1 } = $2;
@@ -773,7 +820,16 @@ sub Main {
 	$self->{Package} =~ s/^.*?([a-z_][a-z_0-9.]*).pl?$/$1/i;
 	$self->{Package} =~ s/[^a-z0-9_]/_/gi;
 		# $self->{Package} is not the whole name, so can start with a number.
-	$self->{Package} .= $#Instances;
+	$self->{Package} = "PPP_$self->{Package}$#Instances";
+
+	# Make $self accessible from inside the package.
+	# This has to happen first so that :macro or :immediate blocks in the
+	# script can access it while the input is being parsed.
+	{
+		no strict 'refs';
+		${ "$self->{Package}::" . PPP_SELF_INSIDE }
+			= $Text::PerlPP::Instances[$#Instances];
+	}
 
 	$self->StartOB();	# Output from here on will be included in the generated script
 
@@ -782,12 +838,9 @@ sub Main {
 	$self->emit_pound_line( '<package header>', 1 );
 
 	# Open the package
-	emit "package PPP_$self->{Package};\nuse 5.010001;\nuse strict;\nuse warnings;\n";
+	emit "package $self->{Package};\nuse 5.010001;\nuse strict;\nuse warnings;\n";
 	emit "use constant { true => !!1, false => !!0 };\n";
-
-	# Make $self accessible from inside the package.
-	emit 'my $' . PPP_SELF_INSIDE .
-						' = $Text::PerlPP::Instances[' . $#Instances . "];\n";
+	emit 'our $' . PPP_SELF_INSIDE . ";\n";	# Lexical alias for $self
 
 	# Definitions
 
@@ -873,7 +926,7 @@ sub Main {
 
 	} else {
 		$self->StartOB();		# Start collecting the output of the Perl script
-		my $result;		# To save any errors from the eval
+		my $result;				# To save any errors from the eval
 
 		# TODO hide %Defs and others of our variables we don't want
 		# $script to access.
