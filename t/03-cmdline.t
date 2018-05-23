@@ -73,7 +73,7 @@ my @testcases=(
 		qr/^_foo bar foobar barfoo$/ ),
 
 	# Sets, which do not textually substitute
-	do{L('-E -sfoo=42','<? my $foo; ?>foo',qr/^foo$/ )},
+	do{L('-sfoo=42','<? my $foo; ?>foo',qr/^foo$/ )},
 	do{L('-sfoo=42','<? my $foo; ?><?= $S{foo} ?>',qr/^42$/ )},
 	[__LINE__, '--set foo=42','<? my $foo; ?>foo',qr/^foo$/ ],
 	do{L('--set foo=42','<? my $foo; ?><?= $S{foo} ?>',qr/^42$/ )},
@@ -124,8 +124,8 @@ for my $lrTest (@testcases) {
 	my ($where, $opts, $testin, $out_re, $err_re) = @$lrTest;
 
 	my ($out, $err);
-	diag '=' x 70;
-	diag $opts, " <<<'", $testin, "'\n";
+	#diag '=' x 70;
+	#diag $opts, " <<<'", $testin, "'\n";
 	run_perlpp $opts, \$testin, \$out, \$err;
 	#diag "Done running";
 
@@ -137,7 +137,7 @@ for my $lrTest (@testcases) {
 		#diag "checking stderr";
 		like($err, $err_re, "stderr $where");
 	}
-	print STDERR "$err\n";
+	#print STDERR "$err\n";
 
 } # foreach test
 

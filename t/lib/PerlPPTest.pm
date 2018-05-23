@@ -31,19 +31,23 @@ our @EXPORT_OK = qw(get_perl_filename);
 # caller's filename:line number at the front of the list
 sub L {
 	my (undef, $filename, $line) = caller;
-	say STDERR "\n## L trace:\n",
-		(Devel::StackTrace->new->as_string() =~ s/^/##/mgr);
+	#say STDERR "\n## L trace:\n",
+	#	(Devel::StackTrace->new->as_string() =~ s/^/##/mgr);
 	return ["$filename:$line", @_];
 } #L
 
 # run_perlpp: Run perlpp
 # Args: $lrArgs, $refStdin, $refStdout, $refStderr
 sub run_perlpp {
-	my ($lrArgs, $refStdin, $refStdout, $refStderr) = @_;
+	my $lrArgs = shift;
+	my $refStdin = shift // \(my $nullstdin);
+	my $refStdout = shift // \(my $nullstdout);
+	my $refStderr = shift // \(my $nullstderr);
+
 	my $retval;
 
 	$lrArgs = [shellwords($lrArgs)] if ref $lrArgs ne 'ARRAY';
-	say STDERR "## args:\n", (Dumper($lrArgs) =~ s/^/##/mgr);
+	#say STDERR "## args:\n", (Dumper($lrArgs) =~ s/^/##/mgr);
 
 	if($ENV{PERLPP_PERLOPTS}) {
 		#say STDERR "# running external perl";

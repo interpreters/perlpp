@@ -129,6 +129,9 @@ sub StartOB {
 	if ( scalar @{$self->{OutputBuffers}} == 0 ) {
 		$| = 1;					# flush contents of STDOUT
 		open( $self->{RootSTDOUT}, ">&STDOUT" ) or die $!;		# dup filehandle
+		#$self->{RootSTDOUT} = $fh;
+		#undef $fh;
+		#say STDERR "stdout in startob ", Dumper($self->{RootSTDOUT});
 	}
 	unshift( @{$self->{OutputBuffers}}, [ $mode, "", $lineno ] );
 	close( STDOUT );			# must be closed before redirecting it to a variable
@@ -617,19 +620,19 @@ sub OutputResult {
 	my $contents_ref = shift;					# reference
 	my $fname = shift;	# "" or other false value => STDOUT
 	my $proc;
-	my $out_fd;
+	my $out_fh;
 
 	for $proc ( @{$self->{Postprocessors}} ) {
 		&$proc( $contents_ref );
 	}
 
 	if ( $fname ) {
-		open( $out_fd, ">", $fname ) or die $!;
+		open( $out_fh, ">", $fname ) or die $!;
 	} else {
-		open( $out_fd, ">&STDOUT" ) or die $!;
+		open( $out_fh, ">&STDOUT" ) or die $!;
 	}
-	print $out_fd $$contents_ref;
-	close( $out_fd ) or die $!;
+	print $out_fh $$contents_ref;
+	close( $out_fh ) or die $!;
 } #OutputResult()
 
 # === Command line parsing ================================================
@@ -744,14 +747,14 @@ sub Main {
 	my $self = shift or die("Please use Text::PerlPP->new()->Main");
 
 	my $lrArgv = shift // [];
-	say STDERR "\n## -----------------\n## argv:\n",
-		(Dumper($lrArgv) =~ s/^/## /mgr);
-	say STDERR "self ", Dumper($self);
+	#say STDERR "\n## -----------------\n## argv:\n",
+	#	(Dumper($lrArgv) =~ s/^/## /mgr);
+	#say STDERR "self ", Dumper($self);
 	unless(_parse_command_line( $lrArgv, $self->{Opts} )) {
 		return EXIT_OK;		# TODO report param err vs. proc err?
 	}
 
-	say STDERR "## opts:\n", (Dumper($self->{Opts}) =~ s/^/## /mgr);
+	#say STDERR "## opts:\n", (Dumper($self->{Opts}) =~ s/^/## /mgr);
 
 	if($self->{Opts}->{PRINT_VERSION}) {
 		print "PerlPP version $Text::PerlPP::VERSION\n";
@@ -836,9 +839,9 @@ sub Main {
 				}
 			keys %{$self->{Opts}->{SETS}};
 
-	say STDERR "\n# Defs_RE: $self->{Defs_RE}";
-	say STDERR "# Defs_repl_text:\n", (Dumper($self->{Defs_repl_text})=~s/^/# /gmr);
-	say STDERR "# Sets\n", (Dumper($self->{Sets})=~s/^/# /gmr);
+	#say STDERR "\n# Defs_RE: $self->{Defs_RE}";
+	#say STDERR "# Defs_repl_text:\n", (Dumper($self->{Defs_repl_text})=~s/^/# /gmr);
+	#say STDERR "# Sets\n", (Dumper($self->{Sets})=~s/^/# /gmr);
 	# Make the copy for runtime
 	emit "my %S = (\n";
 	for my $defname (keys %{$self->{Opts}->{SETS}}) {
@@ -860,9 +863,9 @@ sub Main {
 	}
 
 	# The input file
-	ProcessFile( $self->{Opts}->{INPUT_FILENAME} );
+	$self->ProcessFile( $self->{Opts}->{INPUT_FILENAME} );
 
-	my $script = EndOB();							# The generated Perl script
+	my $script = $self->EndOB();							# The generated Perl script
 
 	# --- Run it ---
 	if ( $self->{Opts}->{DEBUG} ) {
@@ -880,7 +883,7 @@ sub Main {
 			print STDERR $result;
 			return EXIT_PROC_ERR;
 		} else {		# Save successful output
-			OutputResult( \EndOB(), $self->{Opts}->{OUTPUT_FILENAME} );
+			$self->OutputResult( \($self->EndOB()), $self->{Opts}->{OUTPUT_FILENAME} );
 		}
 	}
 	return EXIT_OK;

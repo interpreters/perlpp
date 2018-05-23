@@ -4,8 +4,6 @@ use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
 use rlib './lib';
 use PerlPPTest;
 
-my ($in, $out, $err);
-
 my @testcases=(		# In the order they are given in README.md
 	# [$in, $out, $err (if any)]
 
@@ -95,7 +93,11 @@ plan tests => scalar @testcases;
 
 for my $lrTest (@testcases) {
 	my ($testin, $refout, $referr) = @$lrTest;
-	run3 CMD, \$testin, \$out, \$err;
+	my ($in, $out, $err);
+
+	#run3 CMD, \$testin, \$out, \$err;
+	run_perlpp [], \$testin, \$out, \$err;
+
 	if(defined $refout) {
 		is($out, $refout);
 	}
