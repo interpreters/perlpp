@@ -1,8 +1,10 @@
 #!/usr/bin/env perl
 # Tests of perlpp <?!...?> external commands
+#
+# TODO: On non-Unix, test only `echo` with no parameters.
+
 use rlib './lib';
 use PerlPPTest;
-use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
 
 (my $whereami = __FILE__) =~ s/macro\.t$//;
 my $incfn = '\"' . $whereami . 'included.txt\"';
@@ -26,8 +28,8 @@ for my $lrTest (@testcases) {
 	my ($opts, $testin, $out_re, $err_re) = @$lrTest;
 
 	my ($out, $err);
-	print STDERR CMD . " $opts", " <<<'", $testin, "'\n";
-	run3 CMD . " $opts", \$testin, \$out, \$err;
+	diag "perlpp $opts <<<@{[Text::PerlPP::_QuoteString $testin]}";
+	run_perlpp $opts, \$testin, \$out, \$err;
 
 	if(defined $out_re) {
 		like($out, $out_re);

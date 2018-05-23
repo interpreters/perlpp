@@ -44,14 +44,15 @@ for my $lrTest (@testcases) {
 		# by default, accept any stderr output as indicative of a failure
 		# (a successful test case).
 
-	run3 CMD, \$testin, \$out, \$err;
+	run_perlpp [], \$testin, \$out, \$err;
 	like($err, $err_re);
 
 } # foreach test
 
 for my $lrTest (@testcases2) {
 	my $err_re = shift @$lrTest;
-	run3 join(' ', CMD, @$lrTest), \undef, \undef, \$err;
+	diag join(' ',@$lrTest);
+	run_perlpp $lrTest, undef, undef, \$err;
 	like($err, $err_re);
 }
 

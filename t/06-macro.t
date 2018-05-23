@@ -14,10 +14,10 @@ my @testcases=(
 	#	$err_re (stderr output, if any)]
 
 	# %Defs
-	['-D foo=42', '<?:macro say $Text::PerlPP::Defs{foo}; ?>', qr/^42/],
-	['-D incfile=' . $incfn , '<?:macro Include $Text::PerlPP::Defs{incfile}; ?>',
+	['-D foo=42', '<?:macro say $PSelf->{Defs}->{foo}; ?>', qr/^42/],
+	['-D incfile=' . $incfn , '<?:macro $PSelf->Include( $PSelf->{Defs}->{incfile} ); ?>',
 		qr/^a4b/],
-	['-s incfile=' . $incfn , '<?:macro Include $Text::PerlPP::Sets{incfile}; ?>',
+	['-s incfile=' . $incfn , '<?:macro $PSelf->Include( $PSelf->{Sets}->{incfile} ); ?>',
 		qr/^a4b/],
 	['', '<?:immediate say "print 128;"; ?>',qr/^128$/],
 
@@ -29,8 +29,8 @@ for my $lrTest (@testcases) {
 	my ($opts, $testin, $out_re, $err_re) = @$lrTest;
 
 	my ($out, $err);
-	print STDERR CMD . " $opts", " <<<'", $testin, "'\n";
-	run3 CMD . " $opts", \$testin, \$out, \$err;
+	diag "perlpp $opts", " <<<'", $testin, "'\n";
+	run_perlpp $opts, \$testin, \$out, \$err;
 
 	if(defined $out_re) {
 		like($out, $out_re);
