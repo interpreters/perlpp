@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -W
+#!/usr/bin/env perl
 # Tests from perlpp's README.md and bin/perlpp's POD.
 use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
 use rlib './lib';
@@ -89,7 +89,7 @@ RESULT
 	[ '<?= "!" . "?>foo<?= 42 ?><?" . "bar" ?>', '!foo42bar' ],
 ); #@testcases
 
-plan tests => scalar @testcases;
+plan tests => count_tests(\@testcases, 1, 2);
 
 for my $lrTest (@testcases) {
 	my ($testin, $refout, $referr) = @$lrTest;

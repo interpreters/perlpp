@@ -107,18 +107,7 @@ my @testcases=(
 
 ); #@testcases
 
-# count the out_re and err_re in @testcases, since the number of
-# tests is the sum of those counts.
-my $testcount = 0;
-
-for my $lrTest (@testcases) {
-	my ($out_re, $err_re) = @$lrTest[3..4];
-	++$testcount if defined $out_re;
-	++$testcount if defined $err_re;
-}
-
-plan tests => $testcount;
-diag "Running $testcount tests";
+plan tests => count_tests(\@testcases, 3, 4);
 
 for my $lrTest (@testcases) {
 	my ($where, $opts, $testin, $out_re, $err_re) = @$lrTest;

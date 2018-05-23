@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -W
+#!/usr/bin/env perl
 # Tests of perlpp <?!...?> external commands
 use rlib './lib';
 use PerlPPTest;
@@ -20,17 +20,7 @@ my @testcases=(
 
 ); #@testcases
 
-# count the out_re and err_re in @testcases, since the number of
-# tests is the sum of those counts.
-my $testcount = 0;
-
-for my $lrTest (@testcases) {
-	my ($out_re, $err_re) = @$lrTest[2..3];
-	++$testcount if defined $out_re;
-	++$testcount if defined $err_re;
-}
-
-plan tests => $testcount;
+plan tests => count_tests(\@testcases, 2, 3);
 
 for my $lrTest (@testcases) {
 	my ($opts, $testin, $out_re, $err_re) = @$lrTest;

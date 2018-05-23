@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -W
+#!/usr/bin/env perl
 # Tests of perlpp :macro and related
 use rlib './lib';
 use PerlPPTest;
@@ -23,9 +23,7 @@ my @testcases=(
 
 ); #@testcases
 
-#plan tests => scalar @testcases;
-# TODO count the out_re and err_re in @testcases, since the number of
-# tests is the sum of those counts.
+plan tests => count_tests(\@testcases, 2, 3);
 
 for my $lrTest (@testcases) {
 	my ($opts, $testin, $out_re, $err_re) = @$lrTest;

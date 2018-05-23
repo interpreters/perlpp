@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -W
+#!/usr/bin/env perl
 # Some basic tests for perlpp
 use rlib './lib';
 use PerlPPTest;
@@ -42,7 +42,7 @@ my @testcases=(
 
 ); #@testcases
 
-plan tests => scalar @testcases;
+plan tests => count_tests(\@testcases, 1, 2);
 
 for my $lrTest (@testcases) {
 	my ($testin, $refout, $referr) = @$lrTest;

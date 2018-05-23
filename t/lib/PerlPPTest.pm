@@ -24,7 +24,7 @@ use Text::ParseWords qw(shellwords);
 use Data::Dumper;
 use Devel::StackTrace;
 
-our @EXPORT = qw(run_perlpp L);
+our @EXPORT = qw(run_perlpp L count_tests);
 our @EXPORT_OK = qw(get_perl_filename);
 
 # L: given a list, return an array ref that includes that list, with the
@@ -92,6 +92,22 @@ sub get_perl_filename {
 	}
 	return $secure_perl_path;
 } # get_perl_filename()
+
+# Count the number of tests in an array of arrays.
+# Input:
+# 	$lrTests	arrayref, e.g., [ [test1], [test2], ... ]
+# 	@fields		which fields in each test should be counted, e.g., (2, 3).
+sub count_tests {
+	my ($lrTests, @fields) = @_;
+	my $testcount = 0;
+
+	for my $lrTest (@$lrTests) {
+		do { ++$testcount if defined $lrTest->[$_] } for @fields;
+	}
+	return $testcount;
+} # count_tests()
+
+#########################################
 
 sub import {
 	my $target = caller;

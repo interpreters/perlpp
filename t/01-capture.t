@@ -2,6 +2,7 @@
 # Some basic tests for perlpp
 use rlib './lib';
 use PerlPPTest;
+plan tests => 1;
 
 my ($stdout, $stderr, @result);
 ($stdout, $stderr, @result) = capture {

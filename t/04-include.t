@@ -1,8 +1,7 @@
-#!/usr/bin/env perl -W
+#!/usr/bin/env perl
 # Tests of :include, :macro Include, :immediate ProcessFile
 use rlib './lib';
 use PerlPPTest;
-use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
 
 (my $whereami = __FILE__) =~ s/04-include\.t$//;
 my $incfn = '"' . $whereami . 'included.txt"';
@@ -11,31 +10,37 @@ diag "Including from $incfn\n";
 my ($in, $out, $err);
 
 my @testcases=(
-	# [$in (the script), $out (expected output), $err (stderr output, if any)]
-	['<?:include ' . $incfn . ' ?>',"a4b\n"],
+	# [$lineno, $in (the script), $out (expected output),
+	# 	$err (stderr output, if any)]
+	[__LINE__, '<?:include ' . $incfn . ' ?>',"a4b\n"],
 		# The newline comes from included.txt, which ends with a newline
-	['Hello, <?:include ' . $incfn . ' ?>!',"Hello, a4b\n!"],
-	['<?:macro Include ' . $incfn . ' ?>',"a4b\n"],
-	['Hello, <?:macro Include ' . $incfn . ' ?>!',"Hello, a4b\n!"],
-	['<?:immediate ProcessFile ' . $incfn . ' ?>',"a4b\n"],
-	['Hello, <?:immediate ProcessFile ' . $incfn . ' ?>!',"Hello, a4b\n!"],
-	['<?:immediate for my $fn (qw(a b c)) { ' .
-		'ProcessFile "' . $whereami . '" . $fn . ".txt"; } ?>', "a\nb\nc\n"],
-	['<?:macro for my $fn (qw(a b c)) { ' .
-		'Include "' . $whereami . '" . $fn . ".txt"; } ?>', "a\nb\nc\n"],
+	[__LINE__, 'Hello, <?:include ' . $incfn . ' ?>!',"Hello, a4b\n!"],
+	[__LINE__, '<?:macro $PSelf->Include(' . $incfn . ') ?>',"a4b\n"],
+	[__LINE__, 'Hello, <?:macro $PSelf->Include(' . $incfn . ') ?>!',
+		"Hello, a4b\n!"],
+	[__LINE__, '<?:immediate $PSelf->ProcessFile(' . $incfn . ') ?>',"a4b\n"],
+	[__LINE__, 'Hello, <?:immediate $PSelf->ProcessFile(' . $incfn . ') ?>!',
+		"Hello, a4b\n!"],
+	[__LINE__, '<?:immediate for my $fn (qw(a b c)) { ' .
+		"\$PSelf->ProcessFile(\"${whereami}\${fn}.txt\"); } ?>",
+		"a\nb\nc\n"],
+	[__LINE__, '<?:macro for my $fn (qw(a b c)) { ' .
+		"\$PSelf->Include(\"${whereami}\${fn}.txt\"); } ?>",
+		"a\nb\nc\n"],
 ); #@testcases
 
-plan tests => scalar @testcases;
-	# thanks to http://edumaven.com/test-automation-using-perl/test-calculated-plan
+plan tests => count_tests(\@testcases, 2, 3);
 
 for my $lrTest (@testcases) {
-	my ($testin, $refout, $referr) = @$lrTest;
-	run3 CMD, \$testin, \$out, \$err;
+	my ($lineno, $testin, $refout, $referr) = @$lrTest;
+	diag "<<<@{[Text::PerlPP::_QuoteString $testin]}";
+	run_perlpp [], \$testin, \$out, \$err;
+
 	if(defined $refout) {
-		is($out, $refout);
+		is($out, $refout, "stdout $lineno");
 	}
 	if(defined $referr) {
-		is($err, $referr);
+		is($err, $referr, "stderr $lineno");
 	}
 
 } # foreach test

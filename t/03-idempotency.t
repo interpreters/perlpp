@@ -5,8 +5,8 @@ use PerlPPTest;
 use Text::WordDiff;
 use File::Spec;
 use Data::Dumper;
-
 plan tests => 1;
+
 my $fn = File::Spec->rel2abs($INC{'Text/PerlPP.pm'});
 
 my $wholefile;
