@@ -30,8 +30,8 @@ my @testcases2 =(
 	# please just make sure to document the change and the reason in the
 	# corresponding commit message.
 	[qr/script.*-E/, '--Elines', $whereami . 'multiline.txt'],
-	[qr/error.*line 47/, '--Elines', $whereami . 'multiline.txt'],
-	[qr/Number found.*line 48/, '--Elines', $whereami . 'multiline.txt'],
+	[qr/error.*line 48/, '--Elines', $whereami . 'multiline.txt'],
+	[qr/Number found.*line 49/, '--Elines', $whereami . 'multiline.txt'],
 );
 
 plan tests =>
@@ -51,7 +51,7 @@ for my $lrTest (@testcases) {
 
 for my $lrTest (@testcases2) {
 	my $err_re = shift @$lrTest;
-	diag join(' ',@$lrTest);
+	#diag join(' ',@$lrTest);
 	run_perlpp $lrTest, undef, undef, \$err;
 	like($err, $err_re);
 }

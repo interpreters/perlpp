@@ -8,7 +8,7 @@ use IPC::Run3;
 #	# TODO use $^X even if a PERLPP_CMD is provided.
 #diag "perlpp command: " . CMD;
 (my $whereami = __FILE__) =~ s/02-basic\.t$//;
-diag join(' ', 'File is' . __FILE__, 'whereami', $whereami);
+#diag join(' ', 'File is', __FILE__, 'whereami', $whereami);
 
 my @testcases=(
 	# [$in (the script), $out (expected output), $err (stderr output, if any)]
