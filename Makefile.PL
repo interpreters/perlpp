@@ -43,7 +43,14 @@ WriteMakefile(
         'IPC::Run3' => '0',
         'Test::More' => '0',
     },
-    # TODO add TEST_REQUIRES
+    TEST_REQUIRES => {
+        'Capture::Tiny' => '0',
+        'Carp' => '0',
+        'Config' => '0',
+        'File::Spec' => '0',
+        'Text::ParseWords' => '0',
+        'Text::WordDiff' => '0',
+    },
     PREREQ_PM => {
         'Getopt::Long'     => '2.5',    # Per issue #17
         'Pod::Usage'       => '0',

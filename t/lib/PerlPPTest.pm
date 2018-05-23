@@ -39,6 +39,7 @@ sub L {
 # run_perlpp: Run perlpp
 # Args: $lrArgs, $refStdin, $refStdout, $refStderr
 sub run_perlpp {
+	#say STDERR "args ", Dumper(\@_);
 	my $lrArgs = shift;
 	my $refStdin = shift // \(my $nullstdin);
 	my $refStdout = shift // \(my $nullstdout);

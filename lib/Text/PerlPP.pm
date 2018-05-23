@@ -3,7 +3,7 @@
 
 package Text::PerlPP;
 
-our $VERSION = '0.4.0';
+our $VERSION = '0.500001';
 
 use 5.010001;
 use strict;
@@ -736,7 +736,7 @@ sub _parse_command_line {
 	}
 
 	# Process other arguments.  TODO? support multiple input filenames?
-	$hrOptsOut->{INPUT_FILENAME} = $ARGV[0] // "";
+	$hrOptsOut->{INPUT_FILENAME} = $lrArgs->[0] // "";
 
 	return true;	# Go ahead and run
 } #_parse_command_line()
