@@ -21,7 +21,7 @@ testhere:   # Run the tests from lib rather than blib
 \tperl -Ilib -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t
 
 testpacked: pack    # Test the packed version
-\texport PERLPP_NOUSE=1 PERLPP_CMD="\\\"$secure_perl_path\\\" blib/perlpp"; \\
+\texport PERLPP_NOUSE=1 PERLPP_PERLOPTS="blib/perlpp"; \\
 \tperl -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t
 EOT
 } #postamble
