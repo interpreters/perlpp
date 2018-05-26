@@ -4,12 +4,21 @@ use warnings;
 use ExtUtils::MakeMaker;
 use Config;
 
-# Get the filename of the Perl interpreter running this.  From perlvar.
-my $secure_perl_path = $Config{perlpath};
-if ($^O ne 'VMS') {
-    $secure_perl_path .= $Config{_exe}
-        unless $secure_perl_path =~ m/$Config{_exe}$/i;
-}
+# Get the filename of the Perl interpreter running this.  Modified from perlvar.
+# The -x test is for cygwin or other systems where $Config{perlpath} has no
+# extension and $Config{_exe} is nonempty.  E.g., symlink perl->perl5.10.1.exe.
+# There is no "perl.exe" on such a system.
+sub get_perl_filename {
+    my $secure_perl_path = $Config{perlpath};
+    if ($^O ne 'VMS') {
+        $secure_perl_path .= $Config{_exe}
+            unless (-x $secure_perl_path) ||
+                            ($secure_perl_path =~ m/$Config{_exe}$/i);
+    }
+    return $secure_perl_path;
+} # get_perl_filename()
+
+my $secure_perl_path = get_perl_filename();
 
 sub MY::postamble {     # TODO also handle Windows nmake syntax (SET vs. export)
     return <<EOT;
@@ -17,12 +26,14 @@ authortest:
 \tRELEASE_TESTING=1 prove -l xt"
 
 testhere:   # Run the tests from lib rather than blib
-\tperl -Ilib -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t
+\t"$secure_perl_path" -Ilib -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t
 
-testpacked: pack    # Test the packed version
+testpacked: pack    # Test the packed version.
 \tPERLPP_NOUSE=1 PERLPP_PERLOPTS="blib/perlpp" \\
-\tperl -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t
+\t"$secure_perl_path" -Ilib -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t
 EOT
+    # Note: testpacked uses -Ilib so that I don't have to conditionally
+    # use Text::PerlPP in t/lib/PerlPPTest.pm.
 } #postamble
 
 WriteMakefile(
@@ -39,15 +50,15 @@ WriteMakefile(
     },
     BUILD_REQUIRES => {
         'App::FatPacker' => '0',
-        'IPC::Run3' => '0',
-        'Test::More' => '0',
     },
     TEST_REQUIRES => {
         'Capture::Tiny' => '0',
         'Carp' => '0',
         'Config' => '0',
         'File::Spec' => '0',
+        'IPC::Run3' => '0',
         'rlib' => '0',
+        'Test::More' => '0',
         'Text::ParseWords' => '0',
         'Text::Diff' => '0',   # for t/03-idempotency.t
     },

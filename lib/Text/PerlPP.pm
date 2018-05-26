@@ -3,6 +3,8 @@
 
 package Text::PerlPP;
 
+# Semantic versioning, packed per Perl rules.  Must always be at least one
+# digit left of the decimal, and six digits right of the decimal.
 our $VERSION = '0.500001';
 
 use 5.010001;
@@ -805,8 +807,9 @@ sub Main {
 		return EXIT_OK;		# TODO report param err vs. proc err?
 	}
 
-	if($self->{Opts}->{PRINT_VERSION}) {
-		print "PerlPP version $Text::PerlPP::VERSION\n";
+	if($self->{Opts}->{PRINT_VERSION}) {	# print version, raw and dotted
+		$Text::PerlPP::VERSION =~ m<^([^\.]+)\.(\d{3})(\d{3})>;
+		printf "PerlPP version %d.%d.%d ($VERSION)\n", $1, $2, $3;
 		if($self->{Opts}->{PRINT_VERSION} > 1) {
 			print "Script: $0\nText::PerlPP: $INC{'Text/PerlPP.pm'}\n";
 		}

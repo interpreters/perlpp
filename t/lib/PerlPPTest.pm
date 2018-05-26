@@ -52,20 +52,29 @@ sub run_perlpp {
 	#do { (my $args = Dumper($lrArgs)) =~ s/^/##/gm;
 	#say STDERR "## args:\n$args"; };
 
-	if($ENV{PERLPP_PERLOPTS}) {
-		#my $cmd = join(' ', get_perl_filename(), $ENV{PERLPP_PERLOPTS},
-		#		@$lrArgs);
-		my $cmd = [get_perl_filename(), shellwords($ENV{PERLPP_PERLOPTS}),
-					@$lrArgs];
+	if($ENV{PERLPP_PERLOPTS}) {			# Run external perl
+		state $printed_perl;
+
+		my $perl = get_perl_filename();
+		BAIL_OUT("Cannot find executable perl (tried $perl)") unless -x $perl;
+
+		unless($printed_perl) {		# Report it once for the sake of the logs
+			say STDERR "# External perl: {$perl}";
+			$printed_perl = 1;
+		}
+
+		my $cmd = [$perl, shellwords($ENV{PERLPP_PERLOPTS}), @$lrArgs];
+
 		#say STDERR '# running external perl: {', join('|',@$cmd), '}';
 		$retval = run3($cmd, $refStdin, $refStdout, $refStderr);
 		#say STDERR "#  returned $retval; status $?";
+
 		# TODO figure out $?, retval, &c.
 		# TODO tell the caller if the user hit Ctl-C on the inner perl
 		# invocation so the caller can abort if desired.
 		# That seems to be status 2, on my test system.
 
-	} else {
+	} else {							# Run perl code under this perl
 		#say STDERR "# running perlpp internal";
 		#say STDERR "# redirecting stdin";
 		open local(*STDIN), '<', $refStdin or die $!;
@@ -90,12 +99,16 @@ sub run_perlpp {
 	return $retval;
 } #run_perlpp
 
-# Get the filename of the Perl interpreter running this.  From perlvar.
+# Get the filename of the Perl interpreter running this.  Modified from perlvar.
+# The -x test is for cygwin or other systems where $Config{perlpath} has no
+# extension and $Config{_exe} is nonempty.  E.g., symlink perl->perl5.10.1.exe.
+# There is no "perl.exe" on such a system.
 sub get_perl_filename {
 	my $secure_perl_path = $Config{perlpath};
 	if ($^O ne 'VMS') {
 		$secure_perl_path .= $Config{_exe}
-			unless $secure_perl_path =~ m/$Config{_exe}$/i;
+			unless (-x $secure_perl_path) ||
+							($secure_perl_path =~ m/$Config{_exe}$/i);
 	}
 	return $secure_perl_path;
 } # get_perl_filename()
