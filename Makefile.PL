@@ -48,7 +48,7 @@ WriteMakefile(
         'Config' => '0',
         'File::Spec' => '0',
         'Text::ParseWords' => '0',
-        'Text::WordDiff' => '0',
+        'Text::Diff' => '0',   # for t/03-idempotency.t
     },
     PREREQ_PM => {
         'Getopt::Long'     => '2.5',    # Per issue #17

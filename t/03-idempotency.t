@@ -2,7 +2,7 @@
 # Test running perlpp on itself - nothing should change.
 use rlib './lib';
 use PerlPPTest;
-use Text::WordDiff;
+use Text::Diff;
 use File::Spec;
 use Data::Dumper;
 plan tests => 1;
@@ -33,7 +33,7 @@ if($loaderr) {
 	run_perlpp $lrArgs, undef, \$out;
 
 	ok($out eq $wholefile, 'leaves its own source unchanged');
-	diag "Diff:\n" . word_diff \$wholefile, \$out unless $out eq $wholefile;
+	diag("Diff:\n" . diff \$wholefile, \$out) unless $out eq $wholefile;
 
 	#diag("Out:\n" . (@ARGV ? $out : substr($out,0,100)));
 	#diag("Wholefile:\n" . $wholefile) if @ARGV;
