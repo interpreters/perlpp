@@ -17,11 +17,10 @@ authortest:
 \tRELEASE_TESTING=1 prove -l xt"
 
 testhere:   # Run the tests from lib rather than blib
-\texport PERLPP_CMD="\\\"$secure_perl_path\\\" -Ilib bin/perlpp"; \\
 \tperl -Ilib -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t
 
 testpacked: pack    # Test the packed version
-\texport PERLPP_NOUSE=1 PERLPP_PERLOPTS="blib/perlpp"; \\
+\tPERLPP_NOUSE=1 PERLPP_PERLOPTS="blib/perlpp" \\
 \tperl -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t
 EOT
 } #postamble

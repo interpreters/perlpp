@@ -51,12 +51,17 @@ sub run_perlpp {
 	#say STDERR "## args:\n", (Dumper($lrArgs) =~ s/^/##/mgr);
 
 	if($ENV{PERLPP_PERLOPTS}) {
-		#say STDERR "# running external perl";
-		$retval = run3(
-			join(' ', get_perl_filename(), $ENV{PERLPP_PERLOPTS},
-				@$lrArgs),
-			$refStdin, $refStdout, $refStderr);
+		#my $cmd = join(' ', get_perl_filename(), $ENV{PERLPP_PERLOPTS},
+		#		@$lrArgs);
+		my $cmd = [get_perl_filename(), shellwords($ENV{PERLPP_PERLOPTS}),
+					@$lrArgs];
+		#say STDERR '# running external perl: {', join('|',@$cmd), '}';
+		$retval = run3($cmd, $refStdin, $refStdout, $refStderr);
+		#say STDERR "#  returned $retval; status $?";
 		# TODO figure out $?, retval, &c.
+		# TODO tell the caller if the user hit Ctl-C on the inner perl
+		# invocation so the caller can abort if desired.
+		# That seems to be status 2, on my test system.
 
 	} else {
 		#say STDERR "# running perlpp internal";

@@ -9,9 +9,10 @@ pack.PL				Script to make the packed version
 README
 README.md			The tutorial
 t/00-load.t
-t/01-basic.t
-t/01-readme.t
-t/02-cmdline.t
+t/01-capture.t
+t/02-basic.t
+t/02-readme.t
+t/03-cmdline.t
 t/03-idempotency.t
 t/04-include.t
 t/05-external-command.t
@@ -21,5 +22,7 @@ t/a.txt
 t/b.txt
 t/c.txt
 t/included.txt
+t/lib/PerlPPTest.pm		The test kit
+t/lib/TestcaseList.pm		Helper library for autonumbering testcases
 t/multiline.txt
 t/unclosed.txt
