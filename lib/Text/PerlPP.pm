@@ -248,8 +248,10 @@ sub ExecuteCommand {
 		# 	to with its full package name if we didn't have the `our`.
 		# TODO add a pound line to this eval based on the current line number
 
+		# NOTE: `package NAME BLOCK` syntax was added in Perl 5.14.0, May 2011.
 		my $code = qq{ ;
-			package $self->{Package} {
+			{
+				package $self->{Package};
 				our \$@{[PPP_SELF_INSIDE]};
 				$1
 			};
@@ -276,7 +278,8 @@ sub ExecuteCommand {
 
 		# TODO add a pound line to this eval
 		my $code = qq{ ;
-			package $self->{Package} {
+			{
+				package $self->{Package};
 				our \$@{[PPP_SELF_INSIDE]};
 				$1
 			};
