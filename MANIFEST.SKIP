@@ -75,6 +75,4 @@
 # Skip some specific files
 ^Makefile-premodule
 ^tags
-
-# Things we're still working on
-^t\/lib
+\.stackdump$

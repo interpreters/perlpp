@@ -33,7 +33,7 @@ plan tests => count_tests(\@testcases, 2, 3);
 
 for my $lrTest (@testcases) {
 	my ($lineno, $testin, $refout, $referr) = @$lrTest;
-	diag "<<<@{[Text::PerlPP::_QuoteString $testin]}";
+	#diag "<<<@{[Text::PerlPP::_QuoteString $testin]}";
 	run_perlpp [], \$testin, \$out, \$err;
 
 	if(defined $refout) {

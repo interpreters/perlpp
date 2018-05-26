@@ -28,7 +28,7 @@ for my $lrTest (@testcases) {
 	my ($opts, $testin, $out_re, $err_re) = @$lrTest;
 
 	my ($out, $err);
-	diag "perlpp $opts <<<@{[Text::PerlPP::_QuoteString $testin]}";
+	#diag "perlpp $opts <<<@{[Text::PerlPP::_QuoteString $testin]}";
 	run_perlpp $opts, \$testin, \$out, \$err;
 
 	if(defined $out_re) {

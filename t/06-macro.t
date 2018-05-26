@@ -2,7 +2,6 @@
 # Tests of perlpp :macro and related
 use rlib './lib';
 use PerlPPTest;
-use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
 
 (my $whereami = __FILE__) =~ s/06-macro\.t$//;
 my $incfn = '\"' . $whereami . 'included.txt\"';
