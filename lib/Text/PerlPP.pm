@@ -255,8 +255,10 @@ sub ExecuteCommand {
 			};
 		};
 
-		print "Macro code run:\n$code\n" =~ s/^/#/gmr
-			if($self->{Opts}->{DEBUG});
+		if($self->{Opts}->{DEBUG}) {
+			(my $c = $code) =~ s/^/#/gm;
+			emit "Macro code run:\n$c\n"
+		}
 		eval $code;
 		my $err = $@; chomp $err;
 		emit 'print ' . $self->PrepareString( $self->EndOB() ) . ";\n";
@@ -279,8 +281,10 @@ sub ExecuteCommand {
 				$1
 			};
 		};
-		print "Immediate code run:\n$code\n" =~ s/^/#/gmr
-			if($self->{Opts}->{DEBUG});
+		if($self->{Opts}->{DEBUG}) {
+			(my $c = $code) =~ s/^/#/gm;
+			emit "Immediate code run:\n$c\n"
+		}
 		eval( $code );
 		my $err = $@; chomp $err;
 
@@ -792,16 +796,11 @@ sub _parse_command_line {
 
 sub Main {
 	my $self = shift or die("Please use Text::PerlPP->new()->Main");
-
 	my $lrArgv = shift // [];
-	#say STDERR "\n## -----------------\n## argv:\n",
-	#	(Dumper($lrArgv) =~ s/^/## /mgr);
-	#say STDERR "self ", Dumper($self);
+
 	unless(_parse_command_line( $lrArgv, $self->{Opts} )) {
 		return EXIT_OK;		# TODO report param err vs. proc err?
 	}
-
-	#say STDERR "## opts:\n", (Dumper($self->{Opts}) =~ s/^/## /mgr);
 
 	if($self->{Opts}->{PRINT_VERSION}) {
 		print "PerlPP version $Text::PerlPP::VERSION\n";
@@ -892,9 +891,6 @@ sub Main {
 				}
 			keys %{$self->{Opts}->{SETS}};
 
-	#say STDERR "\n# Defs_RE: $self->{Defs_RE}";
-	#say STDERR "# Defs_repl_text:\n", (Dumper($self->{Defs_repl_text})=~s/^/# /gmr);
-	#say STDERR "# Sets\n", (Dumper($self->{Sets})=~s/^/# /gmr);
 	# Make the copy for runtime
 	emit "my %S = (\n";
 	for my $defname (keys %{$self->{Opts}->{SETS}}) {

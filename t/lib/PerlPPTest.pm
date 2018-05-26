@@ -20,9 +20,10 @@ use Config;
 use IPC::Run3;
 use Text::ParseWords qw(shellwords);
 
-# Debugging aids
-use Data::Dumper;
-use Devel::StackTrace;
+# Debugging aids.  NOTE: not in Makefile.PL since we usually don't need them.
+# Install them manually if you want to use them.
+#use Data::Dumper;
+#use Devel::StackTrace;
 
 our @EXPORT = qw(run_perlpp L count_tests);
 our @EXPORT_OK = qw(get_perl_filename);
@@ -31,8 +32,8 @@ our @EXPORT_OK = qw(get_perl_filename);
 # caller's filename:line number at the front of the list
 sub L {
 	my (undef, $filename, $line) = caller;
-	#say STDERR "\n## L trace:\n",
-	#	(Devel::StackTrace->new->as_string() =~ s/^/##/mgr);
+	#do { (my $stacktrace = Devel::StackTrace->new->as_string()) =~ s/^/##/gm;
+	#say STDERR "\n## L trace:\n$stacktrace"; }
 	return ["$filename:$line", @_];
 } #L
 
@@ -48,7 +49,8 @@ sub run_perlpp {
 	my $retval;
 
 	$lrArgs = [shellwords($lrArgs)] if ref $lrArgs ne 'ARRAY';
-	#say STDERR "## args:\n", (Dumper($lrArgs) =~ s/^/##/mgr);
+	#do { (my $args = Dumper($lrArgs)) =~ s/^/##/gm;
+	#say STDERR "## args:\n$args"; };
 
 	if($ENV{PERLPP_PERLOPTS}) {
 		#my $cmd = join(' ', get_perl_filename(), $ENV{PERLPP_PERLOPTS},

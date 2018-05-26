@@ -47,6 +47,7 @@ WriteMakefile(
         'Carp' => '0',
         'Config' => '0',
         'File::Spec' => '0',
+        'rlib' => '0',
         'Text::ParseWords' => '0',
         'Text::Diff' => '0',   # for t/03-idempotency.t
     },
