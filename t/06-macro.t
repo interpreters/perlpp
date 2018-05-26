@@ -1,10 +1,7 @@
-#!/usr/bin/env perl -W
+#!/usr/bin/env perl
 # Tests of perlpp :macro and related
-use strict;
-use warnings;
-use Test::More 'no_plan';
-use IPC::Run3;
-use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
+use rlib './lib';
+use PerlPPTest;
 
 (my $whereami = __FILE__) =~ s/06-macro\.t$//;
 my $incfn = '\"' . $whereami . 'included.txt\"';
@@ -16,25 +13,23 @@ my @testcases=(
 	#	$err_re (stderr output, if any)]
 
 	# %Defs
-	['-D foo=42', '<?:macro say $Text::PerlPP::Defs{foo}; ?>', qr/^42/],
-	['-D incfile=' . $incfn , '<?:macro Include $Text::PerlPP::Defs{incfile}; ?>',
+	['-D foo=42', '<?:macro say $PSelf->{Defs}->{foo}; ?>', qr/^42/],
+	['-D incfile=' . $incfn , '<?:macro $PSelf->Include( $PSelf->{Defs}->{incfile} ); ?>',
 		qr/^a4b/],
-	['-s incfile=' . $incfn , '<?:macro Include $Text::PerlPP::Sets{incfile}; ?>',
+	['-s incfile=' . $incfn , '<?:macro $PSelf->Include( $PSelf->{Sets}->{incfile} ); ?>',
 		qr/^a4b/],
 	['', '<?:immediate say "print 128;"; ?>',qr/^128$/],
 
 ); #@testcases
 
-#plan tests => scalar @testcases;
-# TODO count the out_re and err_re in @testcases, since the number of
-# tests is the sum of those counts.
+plan tests => count_tests(\@testcases, 2, 3);
 
 for my $lrTest (@testcases) {
 	my ($opts, $testin, $out_re, $err_re) = @$lrTest;
 
 	my ($out, $err);
-	print STDERR CMD . " $opts", " <<<'", $testin, "'\n";
-	run3 CMD . " $opts", \$testin, \$out, \$err;
+	diag "perlpp $opts", " <<<'", $testin, "'\n";
+	run_perlpp $opts, \$testin, \$out, \$err;
 
 	if(defined $out_re) {
 		like($out, $out_re);

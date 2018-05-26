@@ -1,12 +1,8 @@
-#!/usr/bin/env perl -W
+#!/usr/bin/env perl
 # Testing perlpp with invalid input
-use strict;
-use warnings;
-use Test::More;
-use IPC::Run3;
-use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
+use rlib './lib';
+use PerlPPTest;
 (my $whereami = __FILE__) =~ s/07-invalid\.t$//;
-diag "perlpp command " . CMD . "; whereami $whereami.";
 
 my ($out, $err);
 
@@ -32,8 +28,8 @@ my @testcases2 =(
 	# please just make sure to document the change and the reason in the
 	# corresponding commit message.
 	[qr/script.*-E/, '--Elines', $whereami . 'multiline.txt'],
-	[qr/error.*line 47/, '--Elines', $whereami . 'multiline.txt'],
-	[qr/Number found.*line 48/, '--Elines', $whereami . 'multiline.txt'],
+	[qr/error.*line 48/, '--Elines', $whereami . 'multiline.txt'],
+	[qr/Number found.*line 49/, '--Elines', $whereami . 'multiline.txt'],
 );
 
 plan tests =>
@@ -46,14 +42,15 @@ for my $lrTest (@testcases) {
 		# by default, accept any stderr output as indicative of a failure
 		# (a successful test case).
 
-	run3 CMD, \$testin, \$out, \$err;
+	run_perlpp [], \$testin, \$out, \$err;
 	like($err, $err_re);
 
 } # foreach test
 
 for my $lrTest (@testcases2) {
 	my $err_re = shift @$lrTest;
-	run3 join(' ', CMD, @$lrTest), \undef, \undef, \$err;
+	#diag join(' ',@$lrTest);
+	run_perlpp $lrTest, undef, undef, \$err;
 	like($err, $err_re);
 }
 

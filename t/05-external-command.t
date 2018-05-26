@@ -1,10 +1,10 @@
-#!/usr/bin/env perl -W
+#!/usr/bin/env perl
 # Tests of perlpp <?!...?> external commands
-use strict;
-use warnings;
-use Test::More;
-use IPC::Run3;
-use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
+#
+# TODO: On non-Unix, test only `echo` with no parameters.
+
+use rlib './lib';
+use PerlPPTest;
 
 (my $whereami = __FILE__) =~ s/macro\.t$//;
 my $incfn = '\"' . $whereami . 'included.txt\"';
@@ -22,24 +22,14 @@ my @testcases=(
 
 ); #@testcases
 
-# count the out_re and err_re in @testcases, since the number of
-# tests is the sum of those counts.
-my $testcount = 0;
-
-for my $lrTest (@testcases) {
-	my ($out_re, $err_re) = @$lrTest[2..3];
-	++$testcount if defined $out_re;
-	++$testcount if defined $err_re;
-}
-
-plan tests => $testcount;
+plan tests => count_tests(\@testcases, 2, 3);
 
 for my $lrTest (@testcases) {
 	my ($opts, $testin, $out_re, $err_re) = @$lrTest;
 
 	my ($out, $err);
-	print STDERR CMD . " $opts", " <<<'", $testin, "'\n";
-	run3 CMD . " $opts", \$testin, \$out, \$err;
+	#diag "perlpp $opts <<<@{[Text::PerlPP::_QuoteString $testin]}";
+	run_perlpp $opts, \$testin, \$out, \$err;
 
 	if(defined $out_re) {
 		like($out, $out_re);

@@ -1,12 +1,7 @@
-#!/usr/bin/env perl -W
+#!/usr/bin/env perl
 # Tests from perlpp's README.md and bin/perlpp's POD.
-use strict;
-use warnings;
-use Test::More;
-use IPC::Run3;
-use constant CMD => ($ENV{PERLPP_CMD} || 'perl -Iblib/lib blib/script/perlpp');
-
-my ($in, $out, $err);
+use rlib './lib';
+use PerlPPTest;
 
 my @testcases=(		# In the order they are given in README.md
 	# [$in, $out, $err (if any)]
@@ -93,11 +88,14 @@ RESULT
 	[ '<?= "!" . "?>foo<?= 42 ?><?" . "bar" ?>', '!foo42bar' ],
 ); #@testcases
 
-plan tests => scalar @testcases;
+plan tests => count_tests(\@testcases, 1, 2);
 
 for my $lrTest (@testcases) {
 	my ($testin, $refout, $referr) = @$lrTest;
-	run3 CMD, \$testin, \$out, \$err;
+	my ($in, $out, $err);
+
+	run_perlpp [], \$testin, \$out, \$err;
+
 	if(defined $refout) {
 		is($out, $refout);
 	}

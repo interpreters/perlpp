@@ -2,6 +2,8 @@
 /tags
 /fatlib
 /stuff
+*.stackdump
+core
 
 # Dist
 /Text-PerlPP*

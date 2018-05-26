@@ -2,7 +2,7 @@
 # To run this manually from the source tree, do
 #     perl -Ilib bin/perlpp
 use strict; use warnings; use Text::PerlPP;
-exit(Text::PerlPP::Main(\@ARGV));
+exit(Text::PerlPP->new->Main(\@ARGV));
 __END__
 # ### Documentation #######################################################
 
