@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # Tests from perlpp's README.md and bin/perlpp's POD.
-use rlib './lib';
+use rlib 'lib';
 use PerlPPTest;
 
 my @testcases=(		# In the order they are given in README.md

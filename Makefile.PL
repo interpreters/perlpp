@@ -50,19 +50,25 @@ WriteMakefile(
     },
     BUILD_REQUIRES => {
         'App::FatPacker' => '0',
+        'parent' => '0',
     },
     TEST_REQUIRES => {
         'Capture::Tiny' => '0',
         'Carp' => '0',
         'Config' => '0',
+        'constant' => '0',
+        'Cwd' => '0',
+        'Exporter' => '0',
         'File::Spec' => '0',
+        'Getopt::Long' => '2.5',
         'Import::Into' => '0',
         'IPC::Run3' => '0',
-        'List::Util' => '0',
+        'List::Util' => '1.33', # for any()
+        'Pod::Usage' => '0',
         'rlib' => '0',
+        'Text::Diff' => '0',   # for t/03-idempotency.t
         'Test::More' => '0',
         'Text::ParseWords' => '0',
-        'Text::Diff' => '0',   # for t/03-idempotency.t
     },
     PREREQ_PM => {
         'Getopt::Long'     => '2.5',    # Per issue #17

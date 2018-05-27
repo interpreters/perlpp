@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # Some basic tests for perlpp
-use rlib './lib';
+use rlib 'lib';
 use PerlPPTest;
 
 use IPC::Run3;

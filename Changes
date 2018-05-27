@@ -1,6 +1,9 @@
 Revision history for Text-PerlPP
 (Note: GH = GitHub issue; # = RT issue)
 
+0.500.2 2018/05/27
+        Fixes to installation package
+
 0.500.1 2018/05/26
         Changed code to OOP interface.
         Updated tests to run more cleanly and more quickly (GH 24; #125326).

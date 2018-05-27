@@ -3,7 +3,7 @@
 #
 # TODO: On non-Unix, test only `echo` with no parameters.
 
-use rlib './lib';
+use rlib 'lib';
 use PerlPPTest qw(:DEFAULT quote_string);
 use List::Util 'any';
 
