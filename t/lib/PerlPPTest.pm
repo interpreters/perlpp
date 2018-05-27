@@ -26,7 +26,7 @@ use Text::ParseWords qw(shellwords);
 #use Devel::StackTrace;
 
 our @EXPORT = qw(run_perlpp L count_tests);
-our @EXPORT_OK = qw(get_perl_filename);
+our @EXPORT_OK = qw(get_perl_filename quote_string);
 
 # L: given a list, return an array ref that includes that list, with the
 # caller's filename:line number at the front of the list
@@ -126,6 +126,14 @@ sub count_tests {
 	}
 	return $testcount;
 } # count_tests()
+
+sub quote_string {	# wrap $_[0] in single-quotes, escaped properly
+	my $s = shift;
+
+	$s =~ s{\\}{\\\\}g;
+	$s =~ s{'}{\\'}g;
+	return "'" . $s . "'";
+} #	quote_string()
 
 #########################################
 

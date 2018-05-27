@@ -4,7 +4,13 @@
 # TODO: On non-Unix, test only `echo` with no parameters.
 
 use rlib './lib';
-use PerlPPTest;
+use PerlPPTest qw(:DEFAULT quote_string);
+use List::Util 'any';
+
+if(any { $_ eq $^O } 'VMS', 'os390', 'os400', 'riscos', 'amigaos') {
+	plan skip_all => "I don't know how to run this test on $^O";
+	exit;
+}
 
 (my $whereami = __FILE__) =~ s/macro\.t$//;
 my $incfn = '\"' . $whereami . 'included.txt\"';
@@ -22,13 +28,26 @@ my @testcases=(
 
 ); #@testcases
 
-plan tests => count_tests(\@testcases, 2, 3);
+my $ntests = 1 + count_tests(\@testcases, 2, 3);
+plan tests => $ntests;
+
+# First check, which will hopefully work everywhere.
+do {
+	my ($out, $err);
+	run_perlpp [], \'<?! echo howdy', \$out, \$err;
+	is($out, "howdy\n", "basic echo");
+};
+
+if (any { $_ eq $^O } 'dos', 'os2', 'MSWin') {
+	skip "I don't know how to run the rest of the tests on $^O", $ntests-1;
+	exit;
+}
 
 for my $lrTest (@testcases) {
 	my ($opts, $testin, $out_re, $err_re) = @$lrTest;
-
 	my ($out, $err);
-	#diag "perlpp $opts <<<@{[Text::PerlPP::_QuoteString $testin]}";
+
+	#diag "perlpp $opts <<<@{[quote_string $testin]}";
 	run_perlpp $opts, \$testin, \$out, \$err;
 
 	if(defined $out_re) {
@@ -37,7 +56,6 @@ for my $lrTest (@testcases) {
 	if(defined $err_re) {
 		like($err, $err_re);
 	}
-	#print STDERR "$err\n";
 
 } # foreach test
 
