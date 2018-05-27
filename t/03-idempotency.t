@@ -1,10 +1,10 @@
 #!/usr/bin/env perl
 # Test running perlpp on itself - nothing should change.
-use rlib './lib';
+use rlib 'lib';
 use PerlPPTest;
 use Text::Diff;
 use File::Spec;
-use Data::Dumper;
+#use Data::Dumper;
 plan tests => 1;
 
 my $fn = File::Spec->rel2abs($INC{'Text/PerlPP.pm'});

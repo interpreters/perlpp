@@ -1,6 +1,6 @@
 #!perl
 # Some basic tests for perlpp
-use rlib './lib';
+use rlib 'lib';
 use PerlPPTest;
 
 if($ENV{PERLPP_NOUSE} || 0) {

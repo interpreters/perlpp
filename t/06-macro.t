@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # Tests of perlpp :macro and related
-use rlib './lib';
+use rlib 'lib';
 use PerlPPTest;
 
 (my $whereami = __FILE__) =~ s/06-macro\.t$//;

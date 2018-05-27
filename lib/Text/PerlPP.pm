@@ -5,7 +5,7 @@ package Text::PerlPP;
 
 # Semantic versioning, packed per Perl rules.  Must always be at least one
 # digit left of the decimal, and six digits right of the decimal.
-our $VERSION = '0.500001';
+our $VERSION = '0.500002';
 
 use 5.010001;
 use strict;
@@ -13,7 +13,6 @@ use warnings;
 
 use Getopt::Long 2.5 qw(GetOptionsFromArray);
 use Pod::Usage;
-use Data::Dumper;
 
 # === Constants ===========================================================
 
@@ -131,9 +130,6 @@ sub StartOB {
 	if ( scalar @{$self->{OutputBuffers}} == 0 ) {
 		$| = 1;					# flush contents of STDOUT
 		open( $self->{RootSTDOUT}, ">&STDOUT" ) or die $!;		# dup filehandle
-		#$self->{RootSTDOUT} = $fh;
-		#undef $fh;
-		#say STDERR "stdout in startob ", Dumper($self->{RootSTDOUT});
 	}
 	unshift( @{$self->{OutputBuffers}}, [ $mode, "", $lineno ] );
 	close( STDOUT );			# must be closed before redirecting it to a variable
@@ -777,12 +773,7 @@ sub _parse_command_line {
 	# Map the option names from GetOptions back to the internal names we use,
 	# e.g., $hrOptsOut->{EVAL} from $hrOptsOut->{e}.
 	my %revmap = map { $CMDLINE_OPTS{$_}->[0] => $_ } keys %CMDLINE_OPTS;
-	#say "revmap ", Dumper(\%revmap);
-	#say "hrOptsOut ", Dumper($hrOptsOut);
 	for my $optname (keys %$hrOptsOut) {
-		#say "\nOptname $optname";
-		#say "Value $hrOptsOut->{$optname}";
-		#say "Revmap $revmap{$optname}";
 		$hrOptsOut->{ $revmap{$optname} } = $hrOptsOut->{ $optname };
 	}
 

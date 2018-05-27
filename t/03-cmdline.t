@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # Tests of perlpp command-line options
-use rlib './lib';
+use rlib 'lib';
 use PerlPPTest;
 use TestcaseList;
 

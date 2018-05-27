@@ -3,7 +3,7 @@ use 5.010;
 use strict;
 use warnings;
 use Test::More;
-use rlib './lib';
+use rlib 'lib';
 
 BEGIN {
     if($ENV{PERLPP_NOUSE} || 0) {

@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # Tests of :include, :macro Include, :immediate ProcessFile
-use rlib './lib';
+use rlib 'lib';
 use PerlPPTest;
 
 (my $whereami = __FILE__) =~ s/04-include\.t$//;

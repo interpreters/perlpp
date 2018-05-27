@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # Testing perlpp with invalid input
-use rlib './lib';
+use rlib 'lib';
 use PerlPPTest;
 (my $whereami = __FILE__) =~ s/07-invalid\.t$//;
 
