@@ -38,7 +38,7 @@ do {
 	is($out, "howdy\n", "basic echo");
 };
 
-if (any { $_ eq $^O } 'dos', 'os2', 'MSWin') {
+if (any { $_ eq $^O } 'dos', 'os2', 'MSWin32') {
 	skip "I don't know how to run the rest of the tests on $^O", $ntests-1;
 	exit;
 }
