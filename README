@@ -16,7 +16,7 @@ README.md.
 
 REQUIRES
 
-Perl 5.10+ and Getopt::Long 2.50.  There is a fatpacked version that
+Perl 5.10.1+ and Getopt::Long 2.50.  There is a fatpacked version that
 already includes Getopt::Long in the GitHub releases archive:
 https://github.com/interpreters/perlpp/releases
 
@@ -45,12 +45,45 @@ Yet another alternative way of installing
     - Copy lib/Text/PerlPP.pm to a directory in your @INC
     - Copy bin/perlpp to a directory in your PATH.
 
+DEVELOPING
+
+We welcome contributions through the normal GitHub pull-request (PR) workflow.
+The build system is straight ExtUtils::MakeMaker.
+
+Before developing, run
+
+    perl Makefile.PL
+	cpanm --installdeps .            # if you have cpanminus installed
+
+Then, to test your code directly from the lib/ directory, run
+
+    make testhere
+
+Before submitting a PR, please test with the normal
+
+    make ; make test
+
+sequence, as well as with
+
+    make testhere
+    make testpacked
+
+That last one tests the packed version made by pack.PL in blib/perlpp.
+We test on p5p Perl 5.10.1 (cygwin x86) and 5.26.1 (cygwin x64),
+and cperl 5.26.2c (cygwin x64).
+
 SUPPORT AND DOCUMENTATION
 
 After installing, you can find documentation for this module with the
 perldoc command.
 
+	perldoc perlpp
+
+describes syntax and invocation, while
+
     perldoc Text::PerlPP
+
+describes using perlpp within another program.
 
 You can also look for information at:
 
