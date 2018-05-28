@@ -101,7 +101,7 @@ $testcases->load('-v','',qr/\bversion\b/)->
 
 ; #$testcases
 
-plan tests => count_tests($testcases->arr, 3, 4);
+plan tests => scalar count_tests($testcases->arr, 3, 4);
 
 for my $lrTest (@{$testcases->arr}) {
 	my ($where, $opts, $testin, $out_re, $err_re) = @$lrTest;

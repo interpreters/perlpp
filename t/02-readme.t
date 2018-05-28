@@ -88,7 +88,7 @@ RESULT
 	[ '<?= "!" . "?>foo<?= 42 ?><?" . "bar" ?>', '!foo42bar' ],
 ); #@testcases
 
-plan tests => count_tests(\@testcases, 1, 2);
+plan tests => scalar count_tests(\@testcases, 1, 2);
 
 for my $lrTest (@testcases) {
 	my ($testin, $refout, $referr) = @$lrTest;
