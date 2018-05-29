@@ -5,7 +5,7 @@ package Text::PerlPP;
 
 # Semantic versioning, packed per Perl rules.  Must always be at least one
 # digit left of the decimal, and six digits right of the decimal.
-our $VERSION = '0.500003';
+our $VERSION = '0.500004';
 
 use 5.010001;
 use strict;

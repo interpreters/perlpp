@@ -38,17 +38,29 @@ sub L {
 } #L
 
 # run_perlpp: Run perlpp
-# Args: $lrArgs, $refStdin, $refStdout, $refStderr
+# Args: $args, $refStdin, $refStdout, $refStderr
+# 	$args can be:	a string, in which case it is split with shellwords();
+# 					an arrayref, in which case it is used as the args; or
+# 					a hashref with (all optional):
+# 						{args}		string or arrayref as above
+# 						{instance}	an existing Text::PerlPP instance to use
 sub run_perlpp {
-	#say STDERR "args ", Dumper(\@_);
+	#say STDERR "run_perlpp: ", Dumper(\@_);
 	my $lrArgs = shift;
+	my $instance;
+	if(ref $lrArgs eq 'HASH') {
+		$instance = $lrArgs->{instance};	# nonexistent => falsy, so it's OK
+		$lrArgs = $lrArgs->{args};	# or undef, which will become [] below.
+		#say STDERR "args updated: ", Dumper($lrArgs);
+	}
+
 	my $refStdin = shift // \(my $nullstdin);
 	my $refStdout = shift // \(my $nullstdout);
 	my $refStderr = shift // \(my $nullstderr);
 
 	my $retval;
 
-	$lrArgs = [shellwords($lrArgs)] if ref $lrArgs ne 'ARRAY';
+	$lrArgs = [shellwords($lrArgs // '')] if ref $lrArgs ne 'ARRAY';
 	#do { (my $args = Dumper($lrArgs)) =~ s/^/##/gm;
 	#say STDERR "## args:\n$args"; };
 
@@ -76,6 +88,8 @@ sub run_perlpp {
 
 	} else {							# Run perl code under this perl
 		#say STDERR "# running perlpp internal";
+		$instance = Text::PerlPP->new unless $instance;
+
 		#say STDERR "# redirecting stdin";
 		open local(*STDIN), '<', $refStdin or die $!;
 		#say STDERR "# redirected stdin";
@@ -86,7 +100,7 @@ sub run_perlpp {
 			($$refStdout, $$refStderr, @result) = capture {
 				# Thanks to http://www.perlmonks.org/bare/?node_id=289391 by Zaxo
 				#say STDERR "# running perlpp";
-				my $result = Text::PerlPP->new->Main($lrArgs);
+				my $result = $instance->Main($lrArgs);
 				#say STDERR "# done running perlpp";
 				$result;
 			};
