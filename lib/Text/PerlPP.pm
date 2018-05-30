@@ -667,17 +667,24 @@ sub Include {	# As ProcessFile(), but for use within :macro
 	$self->StartOB();		# re-open a plain-text OB
 } #Include
 
+sub FinalizeResult {
+	my $self = shift;
+	my $contents_ref = shift;					# reference
+
+	for my $proc ( @{$self->{Postprocessors}} ) {
+		&$proc( $contents_ref );
+	}
+	return $contents_ref;
+} #FinalizeResult()
+
 sub OutputResult {
 	my $self = shift;
 	my $contents_ref = shift;					# reference
 	my $fname = shift;	# "" or other false value => STDOUT
-	my $proc;
+
+	$self->FinalizeResult( $contents_ref );
+
 	my $out_fh;
-
-	for $proc ( @{$self->{Postprocessors}} ) {
-		&$proc( $contents_ref );
-	}
-
 	if ( $fname ) {
 		open( $out_fh, ">", $fname ) or die $!;
 	} else {
