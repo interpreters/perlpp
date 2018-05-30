@@ -3,7 +3,6 @@
 use rlib 'lib';
 use PerlPPTest;
 
-use IPC::Run3;
 (my $whereami = __FILE__) =~ s/02-basic\.t$//;
 #diag join(' ', 'File is', __FILE__, 'whereami', $whereami);
 
@@ -39,7 +38,7 @@ my @testcases=(
 
 ); #@testcases
 
-plan tests => count_tests(\@testcases, 1, 2);
+plan tests => scalar count_tests(\@testcases, 1, 2);
 
 for my $lrTest (@testcases) {
 	my ($testin, $refout, $referr) = @$lrTest;

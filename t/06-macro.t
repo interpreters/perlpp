@@ -22,7 +22,7 @@ my @testcases=(
 
 ); #@testcases
 
-plan tests => count_tests(\@testcases, 2, 3);
+plan tests => scalar count_tests(\@testcases, 2, 3);
 
 for my $lrTest (@testcases) {
 	my ($opts, $testin, $out_re, $err_re) = @$lrTest;

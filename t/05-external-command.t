@@ -1,15 +1,18 @@
 #!/usr/bin/env perl
-# Tests of perlpp <?!...?> external commands
+# Tests of perlpp <?!...?> external commands.
 #
-# TODO: On non-Unix, test only `echo` with no parameters.
+# Note: On non-Unix, we test only `echo` with no parameters.
+# On non-Unix, non-Windows, we skip this because yours truly doesn't know
+# enough about what external commands are available! :)
 
 use rlib 'lib';
 use PerlPPTest qw(:DEFAULT quote_string);
 use List::Util 'any';
 
-if(any { $_ eq $^O } 'VMS', 'os390', 'os400', 'riscos', 'amigaos') {
-	plan skip_all => "I don't know how to run this test on $^O";
-	exit;
+my $os = $^O;	# so we can mock $^O to test this test code!
+
+if(any { $_ eq $os } 'VMS', 'os390', 'os400', 'riscos', 'amigaos') {
+	plan skip_all => "I don't know how to run this test on $os";
 }
 
 (my $whereami = __FILE__) =~ s/macro\.t$//;
@@ -38,26 +41,27 @@ do {
 	is($out, "howdy\n", "basic echo");
 };
 
-if (any { $_ eq $^O } 'dos', 'os2', 'MSWin') {
-	skip "I don't know how to run the rest of the tests on $^O", $ntests-1;
-	exit;
-}
-
-for my $lrTest (@testcases) {
-	my ($opts, $testin, $out_re, $err_re) = @$lrTest;
-	my ($out, $err);
-
-	#diag "perlpp $opts <<<@{[quote_string $testin]}";
-	run_perlpp $opts, \$testin, \$out, \$err;
-
-	if(defined $out_re) {
-		like($out, $out_re);
-	}
-	if(defined $err_re) {
-		like($err, $err_re);
+SKIP: {
+	if (any { $_ eq $os } 'dos', 'os2', 'MSWin32') {
+		skip "I don't know how to run the rest of the tests on $os", $ntests-1;
 	}
 
-} # foreach test
+	for my $lrTest (@testcases) {
+		my ($opts, $testin, $out_re, $err_re) = @$lrTest;
+		my ($out, $err);
+
+		#diag "perlpp $opts <<<@{[quote_string $testin]}";
+		run_perlpp $opts, \$testin, \$out, \$err;
+
+		if(defined $out_re) {
+			like($out, $out_re);
+		}
+		if(defined $err_re) {
+			like($err, $err_re);
+		}
+
+	} # foreach test
+} #SKIP
 
 # TODO test -o / --output, and processing input from files rather than stdin
 

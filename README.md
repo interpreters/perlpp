@@ -4,7 +4,7 @@ PerlPP: Perl preprocessor
 Translates **Text+Perl** to **Text**.
 It can be used for any kind of text templating, e.g. code generation.
 No external modules are required, just a single file.
-Requires Perl 5.10+.
+Requires Perl 5.10.1+.
 
 PerlPP runs in two passes: it generates a Perl script from your input, and then
 it runs the generated script.  If you see `error at (eval ##)`
@@ -58,11 +58,11 @@ Perl code is included between `<?` and `?>` tags.
 There are several modes, indicated by the character after the `<?`:
 
 	<?	code mode: Perl code is between the tags.
-	<?=	echo mode: prints a Perl expression
-	<?:	internal-command mode: executed by PerlPP itself (see below)
+	<?=	echo mode: prints a Perl expression.
+	<?:	internal-command mode: executed by PerlPP itself.
 	<?/	code mode, beginning with printing a line break.
 	<?#	comment mode: everything in <?# ... ?> is ignored.
-	<?!	external mode: everything in <?! ... ?> is run as an external command
+	<?!	external mode: everything in <?! ... ?> is run as an external command.
 
 The code mode is started by `<?` followed by any number of whitespaces
 or line breaks.
@@ -82,11 +82,11 @@ The Generated Script
 
 The generated script:
 
-- is in its own package, named based on the input filename
-- `use`s `5.010`, `strict`, and `warnings`
+- is in its own package, named based on the input filename and a unique number
+- `use`s `5.010001`, `strict`, and `warnings`
 - provides constants `true` (=`!!1`) and `false` (=`!!0`) (with `use constant`)
-- Declares `my %D` and initializes `%D` based on any **-D** options you provide
-- Declares `my %S` and initializes `%S` based on any **-s** options you provide
+- declares `my %D` and initializes `%D` based on any **-D** options you provide
+- declares `my %S` and initializes `%S` based on any **-s** options you provide
 
 Other than that, everything in the script comes from your input file(s).
 Use the **-E** option to see the generated script.
@@ -159,7 +159,7 @@ So `<?/ ... ?>` is effectively a shorthand for `<? print "\n"; ... ?>`.
 
 The example
 
-	<?!echo Howdy!?>
+	<?! echo Howdy! ?>
 
 produces the output
 
@@ -203,18 +203,21 @@ In this case words like `fooSomeWord` will become `barSomeWord`.
 
 will run `some_perl_code;` at the time of script generation.  Whatever output
 the perl code produces will be included verbatim in the script output.
-This can be used to dynamically select which files you want to include,
-using the provided `Include()` function.  For example:
+Within `some_perl_code`, the current PerlPP instance is available as `$PSelf`.
 
-	<?:macro my $fn="some_name"; Include $fn; ?>
+This can be used to dynamically select which files you want to include,
+using the provided `Include()` method.  For example:
+
+	<?:macro my $fn="some_name"; $PSelf->Include($fn); ?>
 
 has the same effect as
 
 	<?:include some_name ?>
 
-but `$fn` can be determined programmatically.  Note that it is not currently
-possible to select the filename to `Include` based on defines set with **-D**,
-since those do not take effect until the script has been generated.
+but `$fn` can be determined programmatically.  Note that defines set with
+**-D** or **-s** do not take effect effect until after the script has been
+generated, which is after the macro code runs.  However, those are available
+as hashes `$PSelf->{Defs}` and `$PSelf->{Sets}` in macro code.
 
 Capturing
 ---------
@@ -298,7 +301,8 @@ Tests with `<?:if NAME ... ?>` and `<?:elsif NAME ... ?>` have two restrictions:
 
 For example, `<?:if FOO eq "something" ?>` (note the whitespace before `?>`!)
 will work fine.  However, if you want to test `(FOO+1)*3`, you will need
-to use the full Perl code.
+to use the full Perl code `<? if( (FOO+1)*3 == 42 ) { ... } ?>` instead of
+`<?:if ?>` and `<?:endif?>`.
 
 Other Features
 --------------
@@ -306,7 +310,7 @@ Other Features
 ### Custom Preprocessors
 
 It's possible to create your own pre/post-processors in a `<?:macro ?>` block
-using `PerlPP::AddPreprocessor` and `PerlPP::AddPostprocessor`.
+using `$PSelf->AddPreprocessor` and `$PSelf->AddPostprocessor`.
 This feature is used in [BigBenBox](https://github.com/d-ash/BigBenBox) for
 generating code in the C programming language.
 
@@ -328,14 +332,6 @@ and create corresponding *~/.vim/after/syntax/FILETYPE.vim*
 	syntax region PerlPP start='<?' end='?>' containedin=ALL
 
 FILETYPE can be determined with `:set ft?`
-
-## Developing PerlPP
-
-Perlpp should run on any Perl v5.10+.  However, it does require `Getopt::Long`
-v2.50 or higher, so you might have to grab that from CPAN.
-To run the tests, you also need to grab `IPC::Run3`.
-
-The `Makefile` just runs the tests in `t/`; there is no build step.
 
 ## Copyright
 
