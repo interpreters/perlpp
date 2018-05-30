@@ -44,9 +44,10 @@ WriteMakefile(
     LICENSE          => 'mit',
 
     EXE_FILES       => [ 'bin/perlpp' ],
+
     MIN_PERL_VERSION => '5.010',
     CONFIGURE_REQUIRES => {
-        'ExtUtils::MakeMaker' => '0',
+        'ExtUtils::MakeMaker' => '6.46',
     },
     BUILD_REQUIRES => {
         'App::FatPacker' => '0',
@@ -74,6 +75,18 @@ WriteMakefile(
         'Getopt::Long'     => '2.5',    # Per issue #17
         'Pod::Usage'       => '0',
     },
+
+    META_MERGE => {
+        'meta-spec' => { version => 2 },
+        resources => {
+            repository => {
+                type => 'git',
+                url  => 'https://github.com/interpreters/perlpp.git',
+                web  => 'https://github.com/interpreters/perlpp',
+            },
+        },
+    },
+
     dist  => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean => { FILES => 'Text-PerlPP-* fatlib' },
 );
