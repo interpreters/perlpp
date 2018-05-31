@@ -1,4 +1,3 @@
 #!perl
-
-# TODO test postprocessors
-exit 1;
+use Test::More;
+plan skip_all => 'Not yet implemented';
