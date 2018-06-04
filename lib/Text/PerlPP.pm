@@ -806,8 +806,9 @@ sub Main {
 	}
 
 	if($self->{Opts}->{PRINT_VERSION}) {	# print version, raw and dotted
-		$Text::PerlPP::VERSION =~ m<^([^\.]+)\.(\d{3})(\d{3})>;
-		printf "PerlPP version %d.%d.%d ($VERSION)\n", $1, $2, $3;
+		$Text::PerlPP::VERSION =~ m<^([^\.]+)\.(\d{3})(_?)(\d{3})>;
+		printf "PerlPP version %d.%d.%d ($VERSION)%s\n", $1, $2, $4,
+			($3 ? ' (dev)' : '');
 		if($self->{Opts}->{PRINT_VERSION} > 1) {
 			print "Script: $0\nText::PerlPP: $INC{'Text/PerlPP.pm'}\n";
 		}
