@@ -968,8 +968,8 @@ L<https://github.com/interpreters/perlpp/issues>.
 
 =head1 AUTHORS
 
-Andrey Shubin (d-ash at Github; L<andrey.shubin@gmail.com>) and
-Chris White (cxw42 at Github; L<cxwembedded@gmail.com>).
+Andrey Shubin (d-ash at Github; C<andrey.shubin@gmail.com>) and
+Chris White (cxw42 at Github; C<cxwembedded@gmail.com>).
 
 =head1 LICENSE AND COPYRIGHT
 
