@@ -23,7 +23,7 @@ my $secure_perl_path = get_perl_filename();
 sub MY::postamble {     # TODO also handle Windows nmake syntax (SET vs. export)
     return <<EOT;
 authortest:
-\tRELEASE_TESTING=1 prove -l xt"
+\tRELEASE_TESTING=1 prove -l xt
 
 testhere:   # Run the tests from lib rather than blib
 \t"$secure_perl_path" -Ilib -e 'use Test::Harness "runtests"; runtests \@ARGV;' -- t/*.t

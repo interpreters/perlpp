@@ -4,8 +4,9 @@
 package Text::PerlPP;
 
 # Semantic versioning, packed per Perl rules.  Must always be at least one
-# digit left of the decimal, and six digits right of the decimal.
-our $VERSION = '0.600_000';
+# digit left of the decimal, and six digits right of the decimal.  For
+# prerelease versions, put an underscore before the last three digits.
+our $VERSION = '0.600001';
 
 use 5.010001;
 use strict;
@@ -815,15 +816,13 @@ sub Main {
 		return EXIT_OK;
 	}
 
-	# Preamble
-
 	# Save
 	push @Instances, $self;
 
 	$self->{Package} = $self->{Opts}->{INPUT_FILENAME};
 	$self->{Package} =~ s/^.*?([a-z_][a-z_0-9.]*).pl?$/$1/i;
 	$self->{Package} =~ s/[^a-z0-9_]/_/gi;
-		# $self->{Package} is not the whole name, so can start with a number.
+		# Not the whole name yet, so can start with a number.
 	$self->{Package} = "PPP_$self->{Package}$#Instances";
 
 	# Make $self accessible from inside the package.
@@ -831,9 +830,10 @@ sub Main {
 	# script can access it while the input is being parsed.
 	{
 		no strict 'refs';
-		${ "$self->{Package}::" . PPP_SELF_INSIDE }
-			= $Text::PerlPP::Instances[$#Instances];
+		${ "$self->{Package}::" . PPP_SELF_INSIDE } = $self;
 	}
+
+	# --- Preamble -----------
 
 	$self->StartOB();	# Output from here on will be included in the generated script
 
@@ -846,7 +846,7 @@ sub Main {
 	emit "use constant { true => !!1, false => !!0 };\n";
 	emit 'our $' . PPP_SELF_INSIDE . ";\n";	# Lexical alias for $self
 
-	# Definitions
+	# --- Definitions --------
 
 	# Transfer parameters from the command line (-D) to the processed file,
 	# as textual representations of expressions.
@@ -910,6 +910,8 @@ sub Main {
 	}
 	emit ");\n";
 
+	# --- User input ---------
+
 	# Initial code from the command line, if any
 	if($self->{Opts}->{EVAL}) {
 		$self->emit_pound_line( '<-e>', 1 );
@@ -921,7 +923,7 @@ sub Main {
 
 	my $script = $self->EndOB();							# The generated Perl script
 
-	# --- Run it ---
+	# --- Run it -------------
 	if ( $self->{Opts}->{DEBUG} ) {
 		print $script;
 

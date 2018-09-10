@@ -301,12 +301,26 @@ L<ExtUtils::PerlPP>, L<HTML::EP>, L<PML>, L<Preproc::Tiny>, L<ePerl>, L<iperl>.
 
 =head1 AUTHORS
 
-Andrey Shubin (d-ash at Github; L<andrey.shubin@gmail.com>) and
-Chris White (cxw42 at Github; L<cxwembedded@gmail.com>).
+=over
+
+=item * 
+
+Originally by Andrey Shubin (d-ash at Github; C<andrey.shubin@gmail.com>)
+
+=item *
+
+Currently maintained by Chris White (CXW; cxw42 at Github; 
+C<cxwembedded@gmail.com>).
+
+=item *
+
+Other contributions by Mohammad S. Anwar (MANWAR; manwar at Github)
+
+=back
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2013-2018 Andrey Shubin and Christopher White.
+Copyright 2013-2018 PerlPP Contributors (listed above)
 
 This program is distributed under the MIT (X11) License:
 L<http://www.opensource.org/licenses/mit-license.php>
