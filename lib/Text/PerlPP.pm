@@ -4,8 +4,9 @@
 package Text::PerlPP;
 
 # Semantic versioning, packed per Perl rules.  Must always be at least one
-# digit left of the decimal, and six digits right of the decimal.
-our $VERSION = '0.500004';
+# digit left of the decimal, and six digits right of the decimal.  For
+# prerelease versions, put an underscore before the last three digits.
+our $VERSION = '0.600001';
 
 use 5.010001;
 use strict;
@@ -667,17 +668,24 @@ sub Include {	# As ProcessFile(), but for use within :macro
 	$self->StartOB();		# re-open a plain-text OB
 } #Include
 
+sub FinalizeResult {
+	my $self = shift;
+	my $contents_ref = shift;					# reference
+
+	for my $proc ( @{$self->{Postprocessors}} ) {
+		&$proc( $contents_ref );
+	}
+	return $contents_ref;
+} #FinalizeResult()
+
 sub OutputResult {
 	my $self = shift;
 	my $contents_ref = shift;					# reference
 	my $fname = shift;	# "" or other false value => STDOUT
-	my $proc;
+
+	$self->FinalizeResult( $contents_ref );
+
 	my $out_fh;
-
-	for $proc ( @{$self->{Postprocessors}} ) {
-		&$proc( $contents_ref );
-	}
-
 	if ( $fname ) {
 		open( $out_fh, ">", $fname ) or die $!;
 	} else {
@@ -799,15 +807,14 @@ sub Main {
 	}
 
 	if($self->{Opts}->{PRINT_VERSION}) {	# print version, raw and dotted
-		$Text::PerlPP::VERSION =~ m<^([^\.]+)\.(\d{3})(\d{3})>;
-		printf "PerlPP version %d.%d.%d ($VERSION)\n", $1, $2, $3;
+		$Text::PerlPP::VERSION =~ m<^([^\.]+)\.(\d{3})(_?)(\d{3})>;
+		printf "PerlPP version %d.%d.%d ($VERSION)%s\n", $1, $2, $4,
+			($3 ? ' (dev)' : '');
 		if($self->{Opts}->{PRINT_VERSION} > 1) {
 			print "Script: $0\nText::PerlPP: $INC{'Text/PerlPP.pm'}\n";
 		}
 		return EXIT_OK;
 	}
-
-	# Preamble
 
 	# Save
 	push @Instances, $self;
@@ -815,7 +822,7 @@ sub Main {
 	$self->{Package} = $self->{Opts}->{INPUT_FILENAME};
 	$self->{Package} =~ s/^.*?([a-z_][a-z_0-9.]*).pl?$/$1/i;
 	$self->{Package} =~ s/[^a-z0-9_]/_/gi;
-		# $self->{Package} is not the whole name, so can start with a number.
+		# Not the whole name yet, so can start with a number.
 	$self->{Package} = "PPP_$self->{Package}$#Instances";
 
 	# Make $self accessible from inside the package.
@@ -823,9 +830,10 @@ sub Main {
 	# script can access it while the input is being parsed.
 	{
 		no strict 'refs';
-		${ "$self->{Package}::" . PPP_SELF_INSIDE }
-			= $Text::PerlPP::Instances[$#Instances];
+		${ "$self->{Package}::" . PPP_SELF_INSIDE } = $self;
 	}
+
+	# --- Preamble -----------
 
 	$self->StartOB();	# Output from here on will be included in the generated script
 
@@ -838,7 +846,7 @@ sub Main {
 	emit "use constant { true => !!1, false => !!0 };\n";
 	emit 'our $' . PPP_SELF_INSIDE . ";\n";	# Lexical alias for $self
 
-	# Definitions
+	# --- Definitions --------
 
 	# Transfer parameters from the command line (-D) to the processed file,
 	# as textual representations of expressions.
@@ -902,6 +910,8 @@ sub Main {
 	}
 	emit ");\n";
 
+	# --- User input ---------
+
 	# Initial code from the command line, if any
 	if($self->{Opts}->{EVAL}) {
 		$self->emit_pound_line( '<-e>', 1 );
@@ -913,7 +923,7 @@ sub Main {
 
 	my $script = $self->EndOB();							# The generated Perl script
 
-	# --- Run it ---
+	# --- Run it -------------
 	if ( $self->{Opts}->{DEBUG} ) {
 		print $script;
 

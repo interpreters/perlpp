@@ -27,7 +27,7 @@ my @testcases=(
 	['', '<?! false ?> More stuff', qr{^$} , qr{command 'false' failed: process exited}],
 	['-k', '<?! false ?> More stuff', qr{^ More stuff$} , qr{command 'false' failed: process exited}],
 	# Using capturing for part of the command
-	['', '<?!echo -n "?>Hello!?<?"?>', qr{^Hello!\?$}],
+	['', '<?!echo "?>Hello!?<?"?>', qr{^Hello!\?\n$}],
 
 ); #@testcases
 

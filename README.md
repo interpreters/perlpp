@@ -337,5 +337,7 @@ FILETYPE can be determined with `:set ft?`
 
 Distributed under the MIT license --- see
 [LICENSE.txt](LICENSE.txt) for details.
-By Andrey Shubin (d-ash at Github) and Chris White (cxw42 at Github).
-
+By Andrey Shubin ([d-ash](https://github.com/d-ash)) and
+Chris White (CXW; [cxw42](https://github.com/cxw42));
+additional contributions by Mohammad S Anwar (MANWAR;
+[manwar](https://github.com/manwar)).

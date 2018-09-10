@@ -19,6 +19,8 @@ t/05-external-command.t
 t/06-macro.t
 t/07-invalid.t
 t/08-persistent-state.t
+t/09-preproc.t
+t/10-postproc.t
 t/a.txt
 t/b.txt
 t/c.txt

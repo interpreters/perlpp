@@ -53,7 +53,7 @@ The build system is straight ExtUtils::MakeMaker.
 Before developing, run
 
     perl Makefile.PL
-	cpanm --installdeps .            # if you have cpanminus installed
+    cpanm --installdeps .            # if you have cpanminus installed
 
 Then, to test your code directly from the lib/ directory, run
 
