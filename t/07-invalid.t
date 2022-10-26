@@ -21,7 +21,7 @@ my @testcases2 =(
 	# [error RE, perlpp options...]
 	[qr/multiline\.txt/, $whereami . 'multiline.txt'],
 	[qr/error.*line 12/, $whereami . 'multiline.txt'],
-	[qr/Number found.*line 13/, $whereami . 'multiline.txt'],
+	[qr/syntax error.*line 12/, $whereami . 'multiline.txt'],
 
 	# Tests with --Elines.  Note: the specific line numbers here may need
 	# to be changed if the internals of perlpp change.  This is OK;
@@ -29,7 +29,7 @@ my @testcases2 =(
 	# corresponding commit message.
 	[qr/script.*-E/, '--Elines', $whereami . 'multiline.txt'],
 	[qr/error.*line 48/, '--Elines', $whereami . 'multiline.txt'],
-	[qr/Number found.*line 49/, '--Elines', $whereami . 'multiline.txt'],
+	[qr/syntax error.*line 48/, '--Elines', $whereami . 'multiline.txt'],
 );
 
 plan tests =>
