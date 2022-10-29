@@ -6,7 +6,7 @@ package Text::PerlPP;
 # Semantic versioning, packed per Perl rules.  Must always be at least one
 # digit left of the decimal, and six digits right of the decimal.  For
 # prerelease versions, put an underscore before the last three digits.
-our $VERSION = '0.600001';
+our $VERSION = '0.600002';
 
 use 5.010001;
 use strict;

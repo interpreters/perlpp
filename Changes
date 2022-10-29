@@ -1,10 +1,13 @@
 Revision history for Text-PerlPP
 (Note: GH = GitHub issue; # = RT issue)
 
-0.600.1 2022/10/28
+0.600.2 2022/10/28
         - Test fix for blead (demerphq++) (GH 32)
         - Typo fix (GH 30)
         - Add EditorConfig file (editorconfig.org)
+
+0.600.1 2018/09/10
+        Fixes
 
 0.500.4 2018/05/29
         Updated tests
