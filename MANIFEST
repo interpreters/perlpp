@@ -1,3 +1,4 @@
+.editorconfig
 bin/perlpp			The command-line invoker
 Changes
 lib/Text/PerlPP.pm		The main code and perldoc

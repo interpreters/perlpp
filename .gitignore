@@ -4,6 +4,7 @@
 /stuff
 *.stackdump
 core
+cpanfile
 
 # Dist
 /Text-PerlPP*

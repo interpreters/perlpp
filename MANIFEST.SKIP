@@ -76,3 +76,5 @@
 ^Makefile-premodule
 ^tags
 \.stackdump$
+\bcpanfile\b
+\.gz$
