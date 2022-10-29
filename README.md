@@ -215,7 +215,7 @@ has the same effect as
 	<?:include some_name ?>
 
 but `$fn` can be determined programmatically.  Note that defines set with
-**-D** or **-s** do not take effect effect until after the script has been
+**-D** or **-s** do not take effect until after the script has been
 generated, which is after the macro code runs.  However, those are available
 as hashes `$PSelf->{Defs}` and `$PSelf->{Sets}` in macro code.
 
